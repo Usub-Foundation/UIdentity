@@ -7,7 +7,7 @@ namespace keycloak
 
     struct KeycloakRealmConfig
     {
-        // Example: "https://keycloak.0x000f.com"
+        // Example: "https://login.example.com"
         std::string base_url;
 
         // Example: "trader"

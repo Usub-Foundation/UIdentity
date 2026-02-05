@@ -1,1 +1,12 @@
 build
+cmake-build-debug
+cmake-build-debug-docker_io
+.vscode
+
+.cache
+compile_commands.json
+tags
+.idea
+.DS_Store
+src/build
+src/cmake-build-debug

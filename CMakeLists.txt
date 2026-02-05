@@ -96,12 +96,20 @@ find_package(OpenSSL REQUIRED)
 
 # target_compile_definitions(keycloak_pkce PRIVATE ASIO_STANDALONE)
 
+file(GLOB_RECURSE UIDENTITY_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/new-include/*.hpp")
+file(GLOB_RECURSE UIDENTITY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
 # ---- app ----
-add_executable(UIdentity src/main.cpp
-  src/http/uvent_transport.cpp
-  src/keycloak/auth/pkce_auth_strat.cpp
-  src/keycloak/state_store_memory.cpp
-  src/keycloak/pkce.cpp
+add_executable(UIdentity 
+    UIDENTITY_SOURCES
+)
+
+target_include_directories(UIdentity 
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include/>
 )
 
 target_link_libraries(UIdentity PUBLIC
