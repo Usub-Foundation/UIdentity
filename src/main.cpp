@@ -1,8 +1,9 @@
 #include <iostream>
-#include "/home/dev_elseif/UIdentity/app/include/keycloak/config.hpp"
 #include <memory>
-#include </home/dev_elseif/UIdentity/app/include/keycloak/auth/pkce_auth_strat.hpp>
-#include </home/dev_elseif/UIdentity/app/include/keycloak/state_store_memory.hpp>
+
+#include "keycloak/config.hpp"
+#include "keycloak/auth/pkce_auth_strat.hpp"
+#include "keycloak/state_store_memory.hpp"
 
 int main()
 {

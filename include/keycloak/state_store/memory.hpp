@@ -1,6 +1,6 @@
 // TODO: this is a temporary in-memory state store for PKCE states. replace with Redis after.
 #pragma once
-#include "/home/dev_elseif/UIdentity/app/include/keycloak/state_store.hpp"
+#include "keycloak/state_store.hpp"
 
 #include <chrono>
 #include <mutex>

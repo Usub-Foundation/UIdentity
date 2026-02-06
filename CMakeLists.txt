@@ -13,9 +13,9 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
-  server
-  GIT_REPOSITORY https://github.com/Usub-development/webserver.git
-  GIT_TAG main
+  unet
+  GIT_REPOSITORY https://github.com/Usub-development/unet.git
+  GIT_TAG strict_parsing
 )
 
 FetchContent_Declare(
@@ -113,7 +113,7 @@ PUBLIC
 )
 
 target_link_libraries(UIdentity PUBLIC
-  usub::server
+  usub::unet
   glaze::glaze
   jwt-cpp::jwt-cpp
   usub::ulog

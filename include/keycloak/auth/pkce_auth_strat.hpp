@@ -2,8 +2,8 @@
 #include <memory>
 #include <string>
 
-#include "/home/dev_elseif/UIdentity/app/include/keycloak/config.hpp"
-#include "/home/dev_elseif/UIdentity/app/include/keycloak/state_store.hpp"
+#include "keycloak/config.hpp"
+#include "keycloak/state_store.hpp"
 
 namespace keycloak
 {
