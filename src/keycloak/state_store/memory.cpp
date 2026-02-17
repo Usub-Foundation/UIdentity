@@ -1,6 +1,6 @@
-// TODO: this is a temporary in-memory state store implementation. replace with Redis after.
-#include "keycloak/state_store_memory.hpp"
+#include "keycloak/state_store/memory.hpp"
 #include <random>
+#include <utility>
 
 namespace keycloak
 {

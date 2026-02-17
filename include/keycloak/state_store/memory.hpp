@@ -1,7 +1,5 @@
 // TODO: this is a temporary in-memory state store for PKCE states. replace with Redis after.
 #pragma once
-#include "keycloak/state_store.hpp"
-
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -10,13 +8,15 @@
 namespace keycloak
 {
 
-    class MemoryStateStore final : public IStateStore
+    class MemoryStateStore
     {
     public:
         std::string create_state(std::string_view code_verifier,
-                                 std::chrono::seconds ttl) override;
+                                 std::chrono::seconds ttl);
 
-        std::optional<std::string> consume_state(std::string_view state) override;
+        std::optional<std::string> consume_state(std::string_view state);
+        std::string random_state_32();
+        void cleanup_expired_unsafe();
 
     private:
         struct Entry
@@ -27,9 +27,6 @@ namespace keycloak
 
         std::mutex m_;
         std::unordered_map<std::string, Entry> map_;
-
-        static std::string random_state_32();
-        void cleanup_expired_unsafe();
     };
 
 } // namespace keycloak

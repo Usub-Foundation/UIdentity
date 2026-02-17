@@ -6,10 +6,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
+# FetchContent_Declare(
+#   fmt
+#   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+#   GIT_TAG 12.1.0
+# )
+
 FetchContent_Declare(
-  fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG 12.1.0
+  uredis
+  GIT_REPOSITORY https://github.com/Usub-development/uredis.git
+  GIT_TAG main
 )
 
 FetchContent_Declare(
@@ -62,7 +68,7 @@ FetchContent_Declare(uvent
   GIT_PROGRESS TRUE
 )
 
-FetchContent_MakeAvailable(server glaze jwt-cpp ulog uvent fmt)
+FetchContent_MakeAvailable(unet glaze jwt-cpp ulog uvent picosha2 uredis)
 
 find_package(OpenSSL REQUIRED)
 
@@ -96,20 +102,21 @@ find_package(OpenSSL REQUIRED)
 
 # target_compile_definitions(keycloak_pkce PRIVATE ASIO_STANDALONE)
 
-file(GLOB_RECURSE UIDENTITY_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/new-include/*.hpp")
+file(GLOB_RECURSE UIDENTITY_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
 file(GLOB_RECURSE UIDENTITY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # ---- app ----
-add_executable(UIdentity 
-    UIDENTITY_SOURCES
+add_executable(UIdentity
+  ${UIDENTITY_SOURCES}
+  ${UIDENTITY_HEADERS}
 )
 
-target_include_directories(UIdentity 
-PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/>
+target_include_directories(UIdentity
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/>
 )
 
 target_link_libraries(UIdentity PUBLIC
@@ -119,6 +126,7 @@ target_link_libraries(UIdentity PUBLIC
   usub::ulog
   picosha2::picosha2
   usub::uvent
+  usub::uredis
   OpenSSL::SSL
   OpenSSL::Crypto
 )

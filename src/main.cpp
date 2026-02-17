@@ -3,7 +3,7 @@
 
 #include "keycloak/config.hpp"
 #include "keycloak/auth/pkce_auth_strat.hpp"
-#include "keycloak/state_store_memory.hpp"
+#include "keycloak/state_store/memory.hpp"
 
 int main()
 {
@@ -15,7 +15,7 @@ int main()
     cfg.scopes = {"openid", "profile", "email"};
 
     auto store = std::make_shared<keycloak::MemoryStateStore>();
-    keycloak::PkceAuthStrategy strat(cfg, store);
+    keycloak::PkceAuthStrategy strat(cfg, *store);
 
     auto start = strat.create_authorization_url();
     std::cout << start.authorization_url << "\n";

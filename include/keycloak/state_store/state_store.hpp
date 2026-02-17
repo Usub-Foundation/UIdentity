@@ -1,28 +1,40 @@
 #pragma once
+#include <chrono>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <chrono>
 
 namespace keycloak
 {
-
-    // StateStore is responsible for:
-    // - creating and storing (state -> code_verifier) with TTL
-    // - consuming/verifying state once (single-use)
-    class IStateStore
+    template <class StateStore>
+    class KeycloakHandler
     {
     public:
-        virtual ~IStateStore() = default;
+        explicit KeycloakHandler(StateStore &store) : store_(store) {}
 
-        // Store verifier and return generated state.
-        // Implementation should store with TTL and ideally single-use.
-        virtual std::string create_state(std::string_view code_verifier,
-                                         std::chrono::seconds ttl) = 0;
+        std::string create_state(std::string_view code_verifier,
+                                 std::chrono::seconds ttl)
+        {
+            return store_.create_state(code_verifier, ttl);
+        }
 
-        // Consume state: returns code_verifier if valid; std::nullopt otherwise. TODO: implement our error handling
-        // Should delete the state entry after successful read.
-        virtual std::optional<std::string> consume_state(std::string_view state) = 0;
+        std::optional<std::string> consume_state(std::string_view state)
+        {
+            return store_.consume_state(state);
+        }
+
+        std::string random_state_32()
+        {
+            return store_.random_state_32();
+        }
+
+        void cleanup_expired_unsafe()
+        {
+            return store_.cleanup_expired_unsafe();
+        }
+
+    private:
+        StateStore &store_;
     };
 
 } // namespace keycloak

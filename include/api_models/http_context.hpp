@@ -1,38 +1,43 @@
+#pragma once
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-struct HttpRequest {
+struct HttpRequest
+{
   std::string method;
   std::string path;
   std::unordered_map<std::string, std::string> headers;
   std::string body;
-  std::string query; 
+  std::string query;
 };
 
-struct HttpResponse {
+struct HttpResponse
+{
   int status = 200;
   std::unordered_map<std::string, std::string> headers;
   std::string body;
 };
 
-struct RequestContext {
+struct RequestContext
+{
   bool authenticated = false;
 
   // identity-ish (from access token claims)
-  std::string sub;                  // user id
-  std::string preferred_username;   // optional
-  std::string issuer;               // iss
-  std::string client_id;            // azp or client_id-ish
+  std::string sub;                // user id
+  std::string preferred_username; // optional
+  std::string issuer;             // iss
+  std::string client_id;          // azp or client_id-ish
 
   // authz
-  std::vector<std::string> roles;   // realm roles or client roles
-  std::vector<std::string> scopes;  // parsed "scope" claim if used
+  std::vector<std::string> roles;  // realm roles or client roles
+  std::vector<std::string> scopes; // parsed "scope" claim if used
 };
 
-struct AuthConfig {
-  std::string expected_issuer;   // e.g. "https://kc.example.com/realms/my-realm"
-  std::string jwks_url;          // expected_issuer + "/protocol/openid-connect/certs"
+struct AuthConfig
+{
+  std::string expected_issuer; // e.g. "https://kc.example.com/realms/my-realm"
+  std::string jwks_url;        // expected_issuer + "/protocol/openid-connect/certs"
 
   // How strict you want to be (tighten later)
   bool require_audience = false;
@@ -42,9 +47,9 @@ struct AuthConfig {
   int clock_skew_seconds = 60;
 };
 
-
-struct AuthResult {
+struct AuthResult
+{
   bool ok;
-  int http_status;     // 200, 401, 403
-  std::string error;   // short error code
+  int http_status;   // 200, 401, 403
+  std::string error; // short error code
 };
