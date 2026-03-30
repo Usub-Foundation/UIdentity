@@ -13,6 +13,13 @@ include(FetchContent)
 # )
 
 FetchContent_Declare(
+  ulog
+  GIT_REPOSITORY https://github.com/Usub-development/ulog.git
+  GIT_TAG main
+  OVERRIDE_FIND_PACKAGE
+)
+
+FetchContent_Declare(
   uredis
   GIT_REPOSITORY https://github.com/Usub-development/uredis.git
   GIT_TAG main
@@ -36,12 +43,7 @@ FetchContent_Declare(
   GIT_TAG master
 )
 
-FetchContent_Declare(
-  ulog
-  GIT_REPOSITORY https://github.com/Usub-development/ulog.git
-  GIT_TAG main
-  OVERRIDE_FIND_PACKAGE
-)
+
 
 FetchContent_Declare(
   picosha2
@@ -68,7 +70,7 @@ FetchContent_Declare(uvent
   GIT_PROGRESS TRUE
 )
 
-FetchContent_MakeAvailable(unet glaze jwt-cpp ulog uvent picosha2 uredis)
+FetchContent_MakeAvailable(ulog uredis unet glaze jwt-cpp picosha2 uvent)
 
 find_package(OpenSSL REQUIRED)
 
@@ -104,14 +106,15 @@ find_package(OpenSSL REQUIRED)
 
 file(GLOB_RECURSE UIDENTITY_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
 file(GLOB_RECURSE UIDENTITY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+set(UIDENTITY_APP_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+list(REMOVE_ITEM UIDENTITY_SOURCES "${UIDENTITY_APP_SOURCE}")
 
-# ---- app ----
-add_executable(UIdentity
+add_library(UIdentityLib
   ${UIDENTITY_SOURCES}
   ${UIDENTITY_HEADERS}
 )
 
-target_include_directories(UIdentity
+target_include_directories(UIdentityLib
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   PUBLIC
@@ -119,7 +122,7 @@ target_include_directories(UIdentity
   $<INSTALL_INTERFACE:include/>
 )
 
-target_link_libraries(UIdentity PUBLIC
+target_link_libraries(UIdentityLib PUBLIC
   usub::unet
   glaze::glaze
   jwt-cpp::jwt-cpp
@@ -130,3 +133,20 @@ target_link_libraries(UIdentity PUBLIC
   OpenSSL::SSL
   OpenSSL::Crypto
 )
+
+add_executable(UIdentity ${UIDENTITY_APP_SOURCE})
+target_link_libraries(UIdentity PRIVATE UIdentityLib)
+
+enable_testing()
+
+add_executable(UIdentityTests
+  tests/keycloak_flow_tests.cpp
+)
+
+target_link_libraries(UIdentityTests PRIVATE
+  UIdentityLib
+  OpenSSL::SSL
+  OpenSSL::Crypto
+)
+
+add_test(NAME keycloak_flow_tests COMMAND UIdentityTests)

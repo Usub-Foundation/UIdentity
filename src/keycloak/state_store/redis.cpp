@@ -7,7 +7,7 @@
 namespace keycloak
 {
     static constexpr char kHex[] = "0123456789abcdef";
-    // TODO: this was vibecoded with codes and i cant reverte it for some reason, remake.
+    // TODO: Redis integration still needs a safe bridge from the coroutine client to this synchronous API.
     RedisStateStore::RedisStateStore(usub::uredis::RedisClusterClient redis, std::string key_prefix)
         : redis_(std::move(redis)), key_prefix_(std::move(key_prefix))
     {
@@ -33,6 +33,7 @@ namespace keycloak
         return s;
     }
 
+    // TODO: rewrite state store to the asynchrous so that i can implement uredis later
     std::string RedisStateStore::create_state(std::string_view code_verifier,
                                               std::chrono::seconds ttl)
     {

@@ -1,12 +1,11 @@
 #include "keycloak/pkce.hpp"
 
 #include <algorithm>
-#include <array>
-#include <openssl/evp.h>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <random>
 #include <stdexcept>
 #include <string_view>
 
@@ -22,15 +21,18 @@ namespace
     // Might swap this to RAND_bytes later without changing callers, idk yet if its needed.
     std::string generate_random_string(std::size_t length)
     {
-        std::random_device rd;
-        std::mt19937_64 gen(rd());
-        std::uniform_int_distribution<std::size_t> dist(0, kCharset.size() - 1);
+        std::string bytes(length, '\0');
+        if (RAND_bytes(reinterpret_cast<unsigned char *>(bytes.data()),
+                       static_cast<int>(bytes.size())) != 1)
+        {
+            throw std::runtime_error("RAND_bytes failed");
+        }
 
         std::string result;
         result.reserve(length);
-        for (std::size_t i = 0; i < length; ++i)
+        for (unsigned char byte : bytes)
         {
-            result.push_back(kCharset[dist(gen)]);
+            result.push_back(kCharset[byte % kCharset.size()]);
         }
         return result;
     }

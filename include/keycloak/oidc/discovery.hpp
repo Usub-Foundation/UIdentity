@@ -1,8 +1,11 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 #include "api_models/concepts.hpp"
+#include "keycloak/detail/json_utils.hpp"
+#include "keycloak/detail/oidc_utils.hpp"
 
 namespace keycloak
 {
@@ -35,21 +38,36 @@ namespace keycloak
         DiscoveryResult discover(const std::string &base_url,
                                  const std::string &realm)
         {
-            (void)http_client_;
+            const auto response = http_client_.send(
+                detail::make_json_get(detail::discovery_endpoint(base_url, realm)));
+            const int http_status = response.status > 0 ? response.status : 502;
+
+            OidcEndpoints endpoints{
+                .issuer = detail::extract_json_string(response.body, "issuer").value_or(detail::realm_root(base_url, realm)),
+                .authorization_endpoint = detail::extract_json_string(response.body, "authorization_endpoint").value_or(detail::authorization_endpoint(base_url, realm)),
+                .token_endpoint = detail::extract_json_string(response.body, "token_endpoint").value_or(detail::token_endpoint(base_url, realm)),
+                .jwks_uri = detail::extract_json_string(response.body, "jwks_uri").value_or(detail::jwks_endpoint(base_url, realm)),
+                .userinfo_endpoint = detail::extract_json_string(response.body, "userinfo_endpoint").value_or(detail::userinfo_endpoint(base_url, realm)),
+                .revocation_endpoint = detail::extract_json_string(response.body, "revocation_endpoint").value_or(detail::revocation_endpoint(base_url, realm)),
+                .introspection_endpoint = detail::extract_json_string(response.body, "introspection_endpoint").value_or(detail::introspection_endpoint(base_url, realm)),
+                .end_session_endpoint = detail::extract_json_string(response.body, "end_session_endpoint").value_or(detail::logout_endpoint(base_url, realm)),
+            };
+
+            if (http_status < 200 || http_status >= 300)
+            {
+                return DiscoveryResult{
+                    .ok = false,
+                    .http_status = http_status,
+                    .error = detail::extract_json_string(response.body, "error").value_or("oidc_discovery_failed"),
+                    .endpoints = std::move(endpoints),
+                };
+            }
+
             return DiscoveryResult{
-                .ok = false,
-                .http_status = 501,
-                .error = "oidc_discovery_not_implemented",
-                .endpoints = OidcEndpoints{
-                    .issuer = base_url + "/realms/" + realm,
-                    .authorization_endpoint = base_url + "/realms/" + realm + "/protocol/openid-connect/auth",
-                    .token_endpoint = base_url + "/realms/" + realm + "/protocol/openid-connect/token",
-                    .jwks_uri = base_url + "/realms/" + realm + "/protocol/openid-connect/certs",
-                    .userinfo_endpoint = base_url + "/realms/" + realm + "/protocol/openid-connect/userinfo",
-                    .revocation_endpoint = base_url + "/realms/" + realm + "/protocol/openid-connect/revoke",
-                    .introspection_endpoint = base_url + "/realms/" + realm + "/protocol/openid-connect/token/introspect",
-                    .end_session_endpoint = base_url + "/realms/" + realm + "/protocol/openid-connect/logout",
-                },
+                .ok = true,
+                .http_status = http_status,
+                .error = "",
+                .endpoints = std::move(endpoints),
             };
         }
 
