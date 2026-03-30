@@ -70,39 +70,14 @@ FetchContent_Declare(uvent
   GIT_PROGRESS TRUE
 )
 
+set(UREDIS_LOGS ON CACHE BOOL "Enable uredis internal logging" FORCE)
+set(UREDIS_BUILD_EXAMPLES OFF CACHE BOOL "Disable uredis examples in parent builds" FORCE)
+set(UREDIS_BUILD_TESTS OFF CACHE BOOL "Disable uredis tests in parent builds" FORCE)
+
 FetchContent_MakeAvailable(ulog uredis unet glaze jwt-cpp picosha2 uvent)
 
 find_package(OpenSSL REQUIRED)
 
-# set(KEYCLOAK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/keycloak_pkce")
-
-# file(GLOB_RECURSE KEYCLOAK_SOURCES CONFIGURE_DEPENDS
-#   "${KEYCLOAK_DIR}/lib/src/*.cpp"
-#   "${KEYCLOAK_DIR}/lib/src/**/*.cpp"
-# )
-
-# # If this still ends up empty, the path is wrong / folder missing
-# if(NOT KEYCLOAK_SOURCES)
-#   message(FATAL_ERROR "No keycloak pkce sources found under: ${KEYCLOAK_DIR}/lib/src")
-# endif()
-
-# add_library(keycloak_pkce SHARED ${KEYCLOAK_SOURCES})
-# add_library(KeycloakPKCE::Lib ALIAS keycloak_pkce)
-
-# target_include_directories(keycloak_pkce
-#   PUBLIC "${KEYCLOAK_DIR}/lib/include"
-#   PRIVATE "${KEYCLOAK_DIR}/lib/src"
-# )
-
-# target_link_libraries(keycloak_pkce
-#   PRIVATE
-#   fmt::fmt
-#   OpenSSL::SSL
-#   OpenSSL::Crypto
-#   picosha2::picosha2
-# )
-
-# target_compile_definitions(keycloak_pkce PRIVATE ASIO_STANDALONE)
 
 file(GLOB_RECURSE UIDENTITY_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
 file(GLOB_RECURSE UIDENTITY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
