@@ -17,13 +17,14 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <uvent/tasks/AwaitableFrame.h>
 
 #include "api_models/http_context.hpp"
 #include "keycloak/auth/bearer_auth_middleware.hpp"
 #include "keycloak/auth/pkce_auth_strat.hpp"
 #include "keycloak/detail/oidc_utils.hpp"
 #include "keycloak/jwt/access_token_validator.hpp"
-#include "keycloak/oauth/callback_service.hpp"
+#include "keycloak/keycloak_client.hpp"
 #include "keycloak/oidc/discovery.hpp"
 #include "keycloak/state_store/memory.hpp"
 
@@ -42,6 +43,18 @@ namespace
                 return {};
             }
             return handler(request);
+        }
+    };
+
+    struct FakeAuthMiddleware
+    {
+        AuthResult authenticate(const HttpRequest &, RequestContext &) const
+        {
+            return AuthResult{
+                .ok = true,
+                .http_status = 200,
+                .error = "",
+            };
         }
     };
 
@@ -211,10 +224,7 @@ namespace
         cfg.scopes = {"openid", "profile"};
 
         keycloak::MemoryStateStore store;
-        keycloak::PkceAuthStrategy<keycloak::MemoryStateStore> pkce(cfg, store);
-        const auto auth_start = pkce.create_authorization_url();
-        require(!auth_start.state.empty(), "state should be generated");
-        require(auth_start.authorization_url.find("code_challenge=") != std::string::npos, "authorization URL should include PKCE challenge");
+        FakeAuthMiddleware auth_middleware;
 
         FakeHttpClient http;
         http.handler = [&](const keycloak::http::Request &request)
@@ -237,12 +247,24 @@ namespace
         };
 
         keycloak::TokenService<FakeHttpClient> token_service(token_cfg, http);
-        keycloak::CallbackService<keycloak::MemoryStateStore, keycloak::TokenService<FakeHttpClient>> callback(store, token_service);
-        const auto callback_result = callback.handle({.code = "auth-code", .state = auth_start.state});
+        keycloak::KeycloakClient<keycloak::MemoryStateStore,
+                                 keycloak::TokenService<FakeHttpClient>,
+                                 FakeAuthMiddleware>
+            client(cfg, store, token_service, auth_middleware);
+
+        const auto auth_start = client.start_login(std::chrono::minutes(5));
+        require(!auth_start.state.empty(), "state should be generated");
+        require(auth_start.authorization_url.find("code_challenge=") != std::string::npos, "authorization URL should include PKCE challenge");
+
+        const keycloak::CallbackInput callback_input{
+            .code = "auth-code",
+            .state = auth_start.state,
+        };
+        const auto callback_result = client.complete_login(callback_input);
         require(callback_result.ok, "callback should succeed");
         require(callback_result.tokens.access_token == "access-1", "callback access token mismatch");
 
-        const auto second_try = callback.handle({.code = "auth-code", .state = auth_start.state});
+        const auto second_try = client.complete_login(callback_input);
         require(!second_try.ok, "state replay should fail");
     }
 

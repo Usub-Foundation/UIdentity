@@ -62,12 +62,11 @@ namespace keycloak
 
     } // namespace detail
 
-    template <StateStoreLike StateStore>
     class PkceAuthStrategy
     {
     public:
-        PkceAuthStrategy(KeycloakRealmConfig cfg, StateStore &store)
-            : cfg_(std::move(cfg)), store_(store)
+        PkceAuthStrategy(KeycloakRealmConfig cfg)
+            : cfg_(std::move(cfg))
         {
             if (cfg_.base_url.empty() || cfg_.realm.empty() || cfg_.client_id.empty() || cfg_.redirect_uri.empty())
             {
@@ -75,18 +74,10 @@ namespace keycloak
             }
         }
 
-        AuthStart create_authorization_url(std::chrono::seconds ttl = std::chrono::minutes(5))
+        AuthStart create_authorization_url(std::string state, const PkcePair &pkce)
         {
-            // 1) PKCE pair
-            const auto pkce = generate_pkce_pair(/*verifier_len=*/64);
-
-            // 2) Store verifier -> get state
-            std::string state = store_.create_state(pkce.code_verifier, ttl);
-
-            // 3) scope string
             std::string scope_string = detail::join_scopes(cfg_.scopes);
 
-            // 4) Params
             std::vector<std::pair<std::string_view, std::string>> params;
             params.reserve(7);
             params.emplace_back("response_type", "code");
@@ -107,7 +98,6 @@ namespace keycloak
 
     private:
         KeycloakRealmConfig cfg_;
-        StateStore &store_;
     };
 
 } // namespace keycloak
