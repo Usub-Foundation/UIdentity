@@ -5,6 +5,8 @@
 #include <string>
 #include <utility>
 
+#include <unet/http.hpp>
+
 #include "api_models/concepts.hpp"
 #include "api_models/http_context.hpp"
 #include "keycloak/auth/bearer_auth_middleware.hpp"
@@ -35,7 +37,7 @@ namespace keycloak
 
     template <class M>
     concept AuthMiddlewareLike =
-        requires(const M &m, const HttpRequest &request, RequestContext &ctx) {
+        requires(const M &m, usub::unet::http::Request &request, RequestContext &ctx) {
             { m.authenticate(request, ctx) } -> std::same_as<AuthResult>;
         };
 
@@ -92,7 +94,7 @@ namespace keycloak
             };
         }
 
-        AuthResult authenticate_request(const HttpRequest &request, RequestContext &ctx) const
+        AuthResult authenticate_request(usub::unet::http::Request &request, RequestContext &ctx) const
         {
             return auth_middleware_.authenticate(request, ctx);
         }

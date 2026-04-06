@@ -12,23 +12,24 @@
 #include "keycloak/keycloak_client.hpp"
 #include "keycloak/oauth/token_service.hpp"
 #include "keycloak/state_store/memory.hpp"
-#include "probes/Probe.h"
 
 namespace {
 
 struct DemoHttpClient {
-    keycloak::http::Response send(const keycloak::http::Request &request) {
-        std::cout << "demo token exchange request: " << request.method << ' ' << request.url << "\n";
-        return keycloak::http::Response{
-                .status = 501,
-                .headers = {{"content-type", "application/json"}},
-                .body = R"({"error":"demo_http_client_not_configured"})",
-        };
+    usub::unet::http::Response send(const usub::unet::http::Request &request) {
+        std::cout << "demo token exchange request: "
+                  << request.metadata.method_token << ' '
+                  << keycloak::detail::request_url(request) << "\n";
+        usub::unet::http::Response response;
+        response.setStatus(501);
+        response.addHeader("content-type", "application/json");
+        response.body = R"({"error":"demo_http_client_not_configured"})";
+        return response;
     }
 };
 
 struct DemoAuthMiddleware {
-    AuthResult authenticate(const HttpRequest &, RequestContext &) const {
+    AuthResult authenticate(usub::unet::http::Request &, RequestContext &) const {
         return AuthResult{
                 .ok = false,
                 .http_status = 501,
@@ -55,6 +56,7 @@ void register_error_handlers(usub::unet::http::ServerRadix &server) {
         response.addHeader("Content-Type", "application/json");
         response.setBody(R"({"ok":false,"error":"bad_request"})");
     });
+
 }
 
 template<auto Method, class Handler>
@@ -93,17 +95,12 @@ int main() {
                              DemoAuthMiddleware>
             client(cfg, store, token_service, auth_middleware);
 
-    probes::ProbeHandler probes_handler{};
     handlers::AuthHandler auth_handler{client};
 
     usub::Uvent uvent{1};
     usub::unet::http::ServerRadix server;
 
     register_error_handlers(server);
-
-    server.handle(std::set<std::string>{"GET"}, "/healthz", route<&probes::ProbeHandler::liveness>(probes_handler));
-    server.handle(std::set<std::string>{"GET"}, "/readyz", route<&probes::ProbeHandler::readiness>(probes_handler));
-    server.handle(std::set<std::string>{"GET"}, "/startup", route<&probes::ProbeHandler::startup>(probes_handler));
 
     server.handle("GET", "/auth/login", route<&handlers::AuthHandler<decltype(client)>::login>(auth_handler));
     server.handle(std::set<std::string>{"GET", "POST"},

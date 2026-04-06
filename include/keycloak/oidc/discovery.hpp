@@ -40,7 +40,7 @@ namespace keycloak
         {
             const auto response = http_client_.send(
                 detail::make_json_get(detail::discovery_endpoint(base_url, realm)));
-            const int http_status = response.status > 0 ? response.status : 502;
+            const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
             OidcEndpoints endpoints{
                 .issuer = detail::extract_json_string(response.body, "issuer").value_or(detail::realm_root(base_url, realm)),

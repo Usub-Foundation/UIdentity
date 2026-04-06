@@ -5,9 +5,8 @@
 #include <string>
 #include <string_view>
 
+#include <unet/http.hpp>
 #include <uvent/tasks/Awaitable.h>
-
-#include "keycloak/http/http_client.hpp"
 
 namespace keycloak
 {
@@ -23,8 +22,8 @@ namespace keycloak
 
     template <class C>
     concept HttpClientLike =
-        requires(C &c, const http::Request &request) {
-            { c.send(request) } -> std::same_as<http::Response>;
+        requires(C &c, const usub::unet::http::Request &request) {
+            { c.send(request) } -> std::same_as<usub::unet::http::Response>;
         };
 
     template <class S>
@@ -38,8 +37,8 @@ namespace keycloak
 
     template <class C>
     concept AsyncHttpClientLike =
-        requires(C &c, const http::Request &request) {
-            { c.send(request) } -> std::same_as<usub::uvent::task::Awaitable<http::Response>>;
+        requires(C &c, const usub::unet::http::Request &request) {
+            { c.send(request) } -> std::same_as<usub::uvent::task::Awaitable<usub::unet::http::Response>>;
         };
 
 } // namespace keycloak

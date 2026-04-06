@@ -57,7 +57,7 @@ namespace keycloak
             }
 
             const auto jwks_response = http_client_.send(detail::make_json_get(cfg_.jwks_url));
-            const int jwks_status = jwks_response.status > 0 ? jwks_response.status : 502;
+            const int jwks_status = jwks_response.metadata.status_code > 0 ? jwks_response.metadata.status_code : 502;
             if (jwks_status < 200 || jwks_status >= 300)
             {
                 return failure(502, "jwks_fetch_failed");

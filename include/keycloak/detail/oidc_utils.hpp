@@ -6,7 +6,8 @@
 #include <utility>
 #include <vector>
 
-#include "keycloak/http/http_client.hpp"
+#include <unet/http.hpp>
+
 #include "utils/url_encode.hpp"
 
 namespace keycloak::detail
@@ -74,6 +75,88 @@ namespace keycloak::detail
         return realm_root(base_url, realm) + "/.well-known/openid-configuration";
     }
 
+    inline usub::unet::uri::URI parse_absolute_uri(std::string_view url)
+    {
+        usub::unet::uri::URI uri;
+
+        const auto scheme_pos = url.find("://");
+        const std::size_t authority_start = scheme_pos == std::string_view::npos ? 0 : scheme_pos + 3;
+        if (scheme_pos != std::string_view::npos)
+        {
+            uri.scheme = std::string(url.substr(0, scheme_pos));
+        }
+
+        const auto path_start = url.find('/', authority_start);
+        const auto query_start = url.find('?', authority_start);
+        const std::size_t authority_end = std::min(path_start == std::string_view::npos ? url.size() : path_start,
+                                                   query_start == std::string_view::npos ? url.size() : query_start);
+        const auto authority = url.substr(authority_start, authority_end - authority_start);
+
+        const auto colon_pos = authority.rfind(':');
+        if (colon_pos != std::string_view::npos)
+        {
+            uri.authority.host = std::string(authority.substr(0, colon_pos));
+            const auto port_text = authority.substr(colon_pos + 1);
+            if (!port_text.empty())
+            {
+                uri.authority.port = static_cast<std::uint16_t>(std::stoi(std::string(port_text)));
+            }
+        }
+        else
+        {
+            uri.authority.host = std::string(authority);
+        }
+
+        if (path_start != std::string_view::npos)
+        {
+            const auto path_end = query_start == std::string_view::npos ? url.size() : query_start;
+            uri.path = std::string(url.substr(path_start, path_end - path_start));
+        }
+        if (uri.path.empty())
+        {
+            uri.path = "/";
+        }
+
+        if (query_start != std::string_view::npos)
+        {
+            uri.query = std::string(url.substr(query_start + 1));
+        }
+
+        return uri;
+    }
+
+    inline std::string request_url(const usub::unet::http::Request &request)
+    {
+        std::string url;
+        if (!request.metadata.uri.scheme.empty())
+        {
+            url += request.metadata.uri.scheme;
+            url += "://";
+        }
+
+        if (!request.metadata.authority.empty())
+        {
+            url += request.metadata.authority;
+        }
+        else
+        {
+            url += request.metadata.uri.authority.host;
+            if (request.metadata.uri.authority.port != 0)
+            {
+                url += ":" + std::to_string(request.metadata.uri.authority.port);
+            }
+        }
+
+        url += request.metadata.uri.path.empty() ? "/" : request.metadata.uri.path;
+        if (!request.metadata.uri.query.empty())
+        {
+            url += "?";
+            url += request.metadata.uri.query;
+        }
+
+        return url;
+    }
+
     inline std::string build_form_body(const std::vector<std::pair<std::string_view, std::string_view>> &fields)
     {
         std::string body;
@@ -95,43 +178,50 @@ namespace keycloak::detail
         return body;
     }
 
-    inline http::Request make_form_post(std::string url,
-                                        std::string body,
-                                        std::optional<std::string_view> bearer_token = std::nullopt)
+    inline usub::unet::http::Request make_form_post(std::string url,
+                                                    std::string body,
+                                                    std::optional<std::string_view> bearer_token = std::nullopt)
     {
-        http::Request request{
-            .method = "POST",
-            .url = std::move(url),
-            .headers = {
-                {"Content-Type", "application/x-www-form-urlencoded"},
-                {"Accept", "application/json"},
-            },
-            .body = std::move(body),
-        };
+        auto uri = parse_absolute_uri(url);
+        usub::unet::http::Request request;
+        request.metadata.method_token = "POST";
+        request.metadata.uri = std::move(uri);
+        request.metadata.authority = request.metadata.uri.authority.host;
+        if (request.metadata.uri.authority.port != 0)
+        {
+            request.metadata.authority += ":" + std::to_string(request.metadata.uri.authority.port);
+        }
+        request.headers.addHeader(std::string_view{"Content-Type"},
+                                  std::string_view{"application/x-www-form-urlencoded"});
+        request.headers.addHeader(std::string_view{"Accept"}, std::string_view{"application/json"});
+        request.body = std::move(body);
 
         if (bearer_token.has_value())
         {
-            request.headers.emplace("Authorization", "Bearer " + std::string(*bearer_token));
+            request.headers.addHeader(std::string{"Authorization"}, "Bearer " + std::string(*bearer_token));
         }
 
         return request;
     }
 
-    inline http::Request make_json_get(std::string url,
-                                       std::optional<std::string_view> bearer_token = std::nullopt)
+    inline usub::unet::http::Request make_json_get(std::string url,
+                                                   std::optional<std::string_view> bearer_token = std::nullopt)
     {
-        http::Request request{
-            .method = "GET",
-            .url = std::move(url),
-            .headers = {
-                {"Accept", "application/json"},
-            },
-            .body = "",
-        };
+        auto uri = parse_absolute_uri(url);
+        usub::unet::http::Request request;
+        request.metadata.method_token = "GET";
+        request.metadata.uri = std::move(uri);
+        request.metadata.authority = request.metadata.uri.authority.host;
+        if (request.metadata.uri.authority.port != 0)
+        {
+            request.metadata.authority += ":" + std::to_string(request.metadata.uri.authority.port);
+        }
+        request.headers.addHeader(std::string_view{"Accept"}, std::string_view{"application/json"});
+        request.body.clear();
 
         if (bearer_token.has_value())
         {
-            request.headers.emplace("Authorization", "Bearer " + std::string(*bearer_token));
+            request.headers.addHeader(std::string{"Authorization"}, "Bearer " + std::string(*bearer_token));
         }
 
         return request;

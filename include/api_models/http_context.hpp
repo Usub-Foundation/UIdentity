@@ -1,55 +1,50 @@
 #pragma once
+
+#include <any>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-struct HttpRequest
-{
-  std::string method;
-  std::string path;
-  std::unordered_map<std::string, std::string> headers;
-  std::string body;
-  std::string query;
-};
-
-struct HttpResponse
-{
-  int status = 200;
-  std::unordered_map<std::string, std::string> headers;
-  std::string body;
-};
+#include <unet/http.hpp>
 
 struct RequestContext
 {
-  bool authenticated = false;
-
-  // identity-ish (from access token claims)
-  std::string sub;                // user id
-  std::string preferred_username; // optional
-  std::string issuer;             // iss
-  std::string client_id;          // azp or client_id-ish
-
-  // authz
-  std::vector<std::string> roles;  // realm roles or client roles
-  std::vector<std::string> scopes; // parsed "scope" claim if used
+    bool authenticated = false;
+    std::string sub;
+    std::string preferred_username;
+    std::string issuer;
+    std::string client_id;
+    std::vector<std::string> roles;
+    std::vector<std::string> scopes;
 };
 
 struct AuthConfig
 {
-  std::string expected_issuer; // e.g. "https://kc.example.com/realms/my-realm"
-  std::string jwks_url;        // expected_issuer + "/protocol/openid-connect/certs"
-
-  // How strict you want to be (tighten later)
-  bool require_audience = false;
-  std::string expected_audience; // your API audience if configured
-  std::string expected_azp;      // your SPA client id, e.g. "spa-client" (useful if aud is messy)
-
-  int clock_skew_seconds = 60;
+    std::string expected_issuer;
+    std::string jwks_url;
+    bool require_audience = false;
+    std::string expected_audience;
+    std::string expected_azp;
+    int clock_skew_seconds = 60;
 };
 
 struct AuthResult
 {
-  bool ok;
-  int http_status;   // 200, 401, 403
-  std::string error; // short error code
+    bool ok = false;
+    int http_status = 500;
+    std::string error;
 };
+
+inline RequestContext *get_request_context(usub::unet::http::Request &request)
+{
+    return std::any_cast<RequestContext>(&request.user_data);
+}
+
+inline const RequestContext *get_request_context(const usub::unet::http::Request &request)
+{
+    return std::any_cast<RequestContext>(&request.user_data);
+}
+
+inline void set_request_context(usub::unet::http::Request &request, RequestContext context)
+{
+    request.user_data = std::move(context);
+}

@@ -17,6 +17,7 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <unet/http.hpp>
 #include <uvent/tasks/AwaitableFrame.h>
 
 #include "api_models/http_context.hpp"
@@ -32,10 +33,10 @@ namespace
 {
     struct FakeHttpClient
     {
-        std::function<keycloak::http::Response(const keycloak::http::Request &)> handler;
-        std::vector<keycloak::http::Request> requests;
+        std::function<usub::unet::http::Response(const usub::unet::http::Request &)> handler;
+        std::vector<usub::unet::http::Request> requests;
 
-        keycloak::http::Response send(const keycloak::http::Request &request)
+        usub::unet::http::Response send(const usub::unet::http::Request &request)
         {
             requests.push_back(request);
             if (!handler)
@@ -48,7 +49,7 @@ namespace
 
     struct FakeAuthMiddleware
     {
-        AuthResult authenticate(const HttpRequest &, RequestContext &) const
+        AuthResult authenticate(usub::unet::http::Request &, RequestContext &) const
         {
             return AuthResult{
                 .ok = true,
@@ -198,14 +199,13 @@ namespace
     void test_oidc_discovery()
     {
         FakeHttpClient http;
-        http.handler = [](const keycloak::http::Request &request)
+        http.handler = [](const usub::unet::http::Request &request)
         {
-            require(request.method == "GET", "discovery should use GET");
-            return keycloak::http::Response{
-                .status = 200,
-                .headers = {},
-                .body = R"({"issuer":"https://issuer.example/realms/demo","authorization_endpoint":"https://issuer.example/auth","token_endpoint":"https://issuer.example/token","jwks_uri":"https://issuer.example/jwks","userinfo_endpoint":"https://issuer.example/userinfo","revocation_endpoint":"https://issuer.example/revoke","introspection_endpoint":"https://issuer.example/introspect","end_session_endpoint":"https://issuer.example/logout"})",
-            };
+            require(request.metadata.method_token == "GET", "discovery should use GET");
+            usub::unet::http::Response response;
+            response.setStatus(200);
+            response.body = R"({"issuer":"https://issuer.example/realms/demo","authorization_endpoint":"https://issuer.example/auth","token_endpoint":"https://issuer.example/token","jwks_uri":"https://issuer.example/jwks","userinfo_endpoint":"https://issuer.example/userinfo","revocation_endpoint":"https://issuer.example/revoke","introspection_endpoint":"https://issuer.example/introspect","end_session_endpoint":"https://issuer.example/logout"})";
+            return response;
         };
 
         keycloak::OidcDiscoveryClient<FakeHttpClient> discovery(http);
@@ -227,15 +227,14 @@ namespace
         FakeAuthMiddleware auth_middleware;
 
         FakeHttpClient http;
-        http.handler = [&](const keycloak::http::Request &request)
+        http.handler = [&](const usub::unet::http::Request &request)
         {
-            require(request.url == keycloak::detail::token_endpoint(cfg.base_url, cfg.realm), "callback should post to token endpoint");
+            require(keycloak::detail::request_url(request) == keycloak::detail::token_endpoint(cfg.base_url, cfg.realm), "callback should post to token endpoint");
             require(request.body.find("grant_type=authorization_code") != std::string::npos, "callback grant type missing");
-            return keycloak::http::Response{
-                .status = 200,
-                .headers = {},
-                .body = R"({"access_token":"access-1","refresh_token":"refresh-1","id_token":"id-1","token_type":"Bearer","scope":"openid profile","expires_in":300,"refresh_expires_in":3600})",
-            };
+            usub::unet::http::Response response;
+            response.setStatus(200);
+            response.body = R"({"access_token":"access-1","refresh_token":"refresh-1","id_token":"id-1","token_type":"Bearer","scope":"openid profile","expires_in":300,"refresh_expires_in":3600})";
+            return response;
         };
 
         keycloak::TokenServiceConfig token_cfg{
@@ -279,47 +278,45 @@ namespace
             .redirect_uri = "https://service.example/callback",
         };
 
-        http.handler = [&](const keycloak::http::Request &request)
+        http.handler = [&](const usub::unet::http::Request &request)
         {
-            if (request.url == keycloak::detail::token_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (keycloak::detail::request_url(request) == keycloak::detail::token_endpoint(token_cfg.base_url, token_cfg.realm))
             {
                 if (request.body.find("grant_type=refresh_token") != std::string::npos)
                 {
-                    return keycloak::http::Response{
-                        .status = 200,
-                        .headers = {},
-                        .body = R"({"access_token":"access-2","refresh_token":"refresh-2","token_type":"Bearer","scope":"openid","expires_in":111,"refresh_expires_in":222})",
-                    };
+                    usub::unet::http::Response response;
+                    response.setStatus(200);
+                    response.body = R"({"access_token":"access-2","refresh_token":"refresh-2","token_type":"Bearer","scope":"openid","expires_in":111,"refresh_expires_in":222})";
+                    return response;
                 }
 
-                return keycloak::http::Response{
-                    .status = 200,
-                    .headers = {},
-                    .body = R"({"access_token":"access-1","refresh_token":"refresh-1","id_token":"id-1","token_type":"Bearer","scope":"openid profile","expires_in":300,"refresh_expires_in":3600})",
-                };
+                usub::unet::http::Response response;
+                response.setStatus(200);
+                response.body = R"({"access_token":"access-1","refresh_token":"refresh-1","id_token":"id-1","token_type":"Bearer","scope":"openid profile","expires_in":300,"refresh_expires_in":3600})";
+                return response;
             }
 
-            if (request.url == keycloak::detail::revocation_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (keycloak::detail::request_url(request) == keycloak::detail::revocation_endpoint(token_cfg.base_url, token_cfg.realm))
             {
-                return keycloak::http::Response{.status = 204, .headers = {}, .body = ""};
+                usub::unet::http::Response response;
+                response.setStatus(204);
+                return response;
             }
 
-            if (request.url == keycloak::detail::introspection_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (keycloak::detail::request_url(request) == keycloak::detail::introspection_endpoint(token_cfg.base_url, token_cfg.realm))
             {
-                return keycloak::http::Response{
-                    .status = 200,
-                    .headers = {},
-                    .body = R"({"active":true,"sub":"user-123","preferred_username":"alice","email":"alice@example.com","scope":"openid profile","realm_access":{"roles":["admin"]}})",
-                };
+                usub::unet::http::Response response;
+                response.setStatus(200);
+                response.body = R"({"active":true,"sub":"user-123","preferred_username":"alice","email":"alice@example.com","scope":"openid profile","realm_access":{"roles":["admin"]}})";
+                return response;
             }
 
-            if (request.url == keycloak::detail::userinfo_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (keycloak::detail::request_url(request) == keycloak::detail::userinfo_endpoint(token_cfg.base_url, token_cfg.realm))
             {
-                return keycloak::http::Response{
-                    .status = 200,
-                    .headers = {},
-                    .body = R"({"sub":"user-123","preferred_username":"alice","email":"alice@example.com","resource_access":{"api":{"roles":["reader"]}}})",
-                };
+                usub::unet::http::Response response;
+                response.setStatus(200);
+                response.body = R"({"sub":"user-123","preferred_username":"alice","email":"alice@example.com","resource_access":{"api":{"roles":["reader"]}}})";
+                return response;
             }
 
             throw std::runtime_error("unexpected request in test_token_service_endpoints");
@@ -356,14 +353,13 @@ namespace
         const auto jwt = make_signed_jwt(key_material.private_key.get(), issuer, audience, azp);
 
         FakeHttpClient http;
-        http.handler = [&](const keycloak::http::Request &request)
+        http.handler = [&](const usub::unet::http::Request &request)
         {
-            require(request.url == issuer + "/protocol/openid-connect/certs", "validator should request configured jwks url");
-            return keycloak::http::Response{
-                .status = 200,
-                .headers = {},
-                .body = key_material.jwks_json,
-            };
+            require(keycloak::detail::request_url(request) == issuer + "/protocol/openid-connect/certs", "validator should request configured jwks url");
+            usub::unet::http::Response response;
+            response.setStatus(200);
+            response.body = key_material.jwks_json;
+            return response;
         };
 
         AuthConfig auth_cfg{
@@ -382,17 +378,21 @@ namespace
         require(validation.context.preferred_username == "alice", "validator username mismatch");
 
         keycloak::BearerAuthMiddleware<keycloak::AccessTokenValidator<FakeHttpClient>> middleware(validator);
-        HttpRequest request{
-            .method = "GET",
-            .path = "/protected",
-            .headers = {{"Authorization", "Bearer " + jwt}},
+        usub::unet::http::Request request{
+            .metadata = {
+                .method_token = "GET",
+                .uri = {.path = "/protected"},
+            },
             .body = "",
-            .query = "",
         };
+        request.headers.addHeader("Authorization", "Bearer " + jwt);
         RequestContext context;
         const auto auth_result = middleware.authenticate(request, context);
         require(auth_result.ok, "middleware should authenticate valid bearer token");
         require(context.authenticated, "middleware should propagate authenticated context");
+        const auto *stored_context = get_request_context(request);
+        require(stored_context != nullptr, "middleware should store request context in user_data");
+        require(stored_context->preferred_username == "alice", "stored request context username mismatch");
     }
 } // namespace
 

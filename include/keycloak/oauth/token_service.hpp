@@ -129,7 +129,7 @@ namespace keycloak
 
             const auto response = http_client_.send(
                 detail::make_form_post(detail::revocation_endpoint(cfg_.base_url, cfg_.realm), request_body));
-            const int http_status = response.status > 0 ? response.status : 502;
+            const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
             if (http_status >= 200 && http_status < 300)
             {
@@ -175,7 +175,7 @@ namespace keycloak
 
             const auto response = http_client_.send(
                 detail::make_form_post(detail::introspection_endpoint(cfg_.base_url, cfg_.realm), request_body));
-            const int http_status = response.status > 0 ? response.status : 502;
+            const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
             if (http_status < 200 || http_status >= 300)
             {
@@ -231,7 +231,7 @@ namespace keycloak
 
             const auto response = http_client_.send(
                 detail::make_json_get(detail::userinfo_endpoint(cfg_.base_url, cfg_.realm), access_token));
-            const int http_status = response.status > 0 ? response.status : 502;
+            const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
             if (http_status < 200 || http_status >= 300)
             {
@@ -257,10 +257,10 @@ namespace keycloak
         }
 
     private:
-        OAuthResult parse_token_response(const http::Response &response,
+        OAuthResult parse_token_response(const usub::unet::http::Response &response,
                                         std::string_view fallback_error) const
         {
-            const int http_status = response.status > 0 ? response.status : 502;
+            const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
             if (http_status < 200 || http_status >= 300)
             {
                 return OAuthResult{
