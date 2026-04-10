@@ -195,6 +195,8 @@ namespace keycloak::detail
                                   std::string_view{"application/x-www-form-urlencoded"});
         request.headers.addHeader(std::string_view{"Accept"}, std::string_view{"application/json"});
         request.body = std::move(body);
+        request.headers.addHeader(std::string_view{"Content-Length"},
+                                  std::to_string(request.body.size()));
 
         if (bearer_token.has_value())
         {

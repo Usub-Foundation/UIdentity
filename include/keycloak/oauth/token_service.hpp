@@ -6,6 +6,9 @@
 #include <utility>
 #include <vector>
 
+#include <uvent/tasks/Awaitable.h>
+#include <uvent/tasks/AwaitableFrame.h>
+
 #include "api_models/concepts.hpp"
 #include "keycloak/detail/json_utils.hpp"
 #include "keycloak/detail/jwt_utils.hpp"
@@ -23,7 +26,7 @@ namespace keycloak
         std::string redirect_uri;
     };
 
-    template <HttpClientLike HttpClient>
+    template <AsyncHttpClientLike HttpClient>
     class TokenService
     {
     public:
@@ -32,12 +35,12 @@ namespace keycloak
         {
         }
 
-        OAuthResult exchange_authorization_code(std::string_view code,
-                                                std::string_view code_verifier)
+        usub::uvent::task::Awaitable<OAuthResult> exchange_authorization_code(std::string_view code,
+                                                                              std::string_view code_verifier)
         {
             if (code.empty() || code_verifier.empty())
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = 400,
                     .error = "missing_code_or_code_verifier",
@@ -62,16 +65,16 @@ namespace keycloak
                 return detail::build_form_body(fields);
             }();
 
-            const auto response = http_client_.send(
+            const auto response = co_await http_client_.send(
                 detail::make_form_post(detail::token_endpoint(cfg_.base_url, cfg_.realm), request_body));
-            return parse_token_response(response, "token_exchange_failed");
+            co_return parse_token_response(response, "token_exchange_failed");
         }
 
-        OAuthResult refresh_tokens(std::string_view refresh_token)
+        usub::uvent::task::Awaitable<OAuthResult> refresh_tokens(std::string_view refresh_token)
         {
             if (refresh_token.empty())
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = 400,
                     .error = "missing_refresh_token",
@@ -94,17 +97,17 @@ namespace keycloak
                 return detail::build_form_body(fields);
             }();
 
-            const auto response = http_client_.send(
+            const auto response = co_await http_client_.send(
                 detail::make_form_post(detail::token_endpoint(cfg_.base_url, cfg_.realm), request_body));
-            return parse_token_response(response, "token_refresh_failed");
+            co_return parse_token_response(response, "token_refresh_failed");
         }
 
-        OAuthResult revoke_token(std::string_view token,
-                                 std::string_view token_type_hint = "refresh_token")
+        usub::uvent::task::Awaitable<OAuthResult> revoke_token(std::string_view token,
+                                                               std::string_view token_type_hint = "refresh_token")
         {
             if (token.empty())
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = 400,
                     .error = "missing_token",
@@ -127,31 +130,31 @@ namespace keycloak
                 return detail::build_form_body(fields);
             }();
 
-            const auto response = http_client_.send(
+            const auto response = co_await http_client_.send(
                 detail::make_form_post(detail::revocation_endpoint(cfg_.base_url, cfg_.realm), request_body));
             const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
             if (http_status >= 200 && http_status < 300)
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = true,
                     .http_status = http_status,
                     .error = "",
                 };
             }
 
-            return OAuthResult{
+            co_return OAuthResult{
                 .ok = false,
                 .http_status = http_status,
-                .error = detail::extract_json_string(response.body, "error").value_or("token_revoke_failed"),
+                .error = compose_error_message(response, "token_revoke_failed"),
             };
         }
 
-        OAuthResult introspect_token(std::string_view token)
+        usub::uvent::task::Awaitable<OAuthResult> introspect_token(std::string_view token)
         {
             if (token.empty())
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = 400,
                     .error = "missing_token",
@@ -173,22 +176,22 @@ namespace keycloak
                 return detail::build_form_body(fields);
             }();
 
-            const auto response = http_client_.send(
+            const auto response = co_await http_client_.send(
                 detail::make_form_post(detail::introspection_endpoint(cfg_.base_url, cfg_.realm), request_body));
             const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
             if (http_status < 200 || http_status >= 300)
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = http_status,
-                    .error = detail::extract_json_string(response.body, "error").value_or("token_introspection_failed"),
+                    .error = compose_error_message(response, "token_introspection_failed"),
                 };
             }
 
             if (!detail::extract_json_bool(response.body, "active").value_or(false))
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = 401,
                     .error = "inactive_token",
@@ -209,7 +212,7 @@ namespace keycloak
                 tokens.expires_in = *exp;
             }
 
-            return OAuthResult{
+            co_return OAuthResult{
                 .ok = true,
                 .http_status = http_status,
                 .error = "",
@@ -218,27 +221,27 @@ namespace keycloak
             };
         }
 
-        OAuthResult fetch_user_info(std::string_view access_token)
+        usub::uvent::task::Awaitable<OAuthResult> fetch_user_info(std::string_view access_token)
         {
             if (access_token.empty())
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = 400,
                     .error = "missing_access_token",
                 };
             }
 
-            const auto response = http_client_.send(
+            const auto response = co_await http_client_.send(
                 detail::make_json_get(detail::userinfo_endpoint(cfg_.base_url, cfg_.realm), access_token));
             const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
             if (http_status < 200 || http_status >= 300)
             {
-                return OAuthResult{
+                co_return OAuthResult{
                     .ok = false,
                     .http_status = http_status,
-                    .error = detail::extract_json_string(response.body, "error").value_or("userinfo_request_failed"),
+                    .error = compose_error_message(response, "userinfo_request_failed"),
                 };
             }
 
@@ -248,7 +251,7 @@ namespace keycloak
             user_info.email = detail::extract_json_string(response.body, "email").value_or("");
             user_info.roles = detail::extract_all_roles(response.body);
 
-            return OAuthResult{
+            co_return OAuthResult{
                 .ok = true,
                 .http_status = http_status,
                 .error = "",
@@ -257,6 +260,19 @@ namespace keycloak
         }
 
     private:
+        static std::string compose_error_message(const usub::unet::http::Response &response,
+                                                 std::string_view fallback_error)
+        {
+            const auto error = detail::extract_json_string(response.body, "error").value_or(std::string(fallback_error));
+            const auto description = detail::extract_json_string(response.body, "error_description").value_or("");
+            if (description.empty())
+            {
+                return error;
+            }
+
+            return error + ": " + description;
+        }
+
         OAuthResult parse_token_response(const usub::unet::http::Response &response,
                                         std::string_view fallback_error) const
         {
@@ -266,7 +282,7 @@ namespace keycloak
                 return OAuthResult{
                     .ok = false,
                     .http_status = http_status,
-                    .error = detail::extract_json_string(response.body, "error").value_or(std::string(fallback_error)),
+                    .error = compose_error_message(response, fallback_error),
                 };
             }
 

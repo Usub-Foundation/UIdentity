@@ -3,6 +3,9 @@
 #include <string>
 #include <utility>
 
+#include <uvent/tasks/Awaitable.h>
+#include <uvent/tasks/AwaitableFrame.h>
+
 #include "api_models/concepts.hpp"
 #include "keycloak/detail/json_utils.hpp"
 #include "keycloak/detail/oidc_utils.hpp"
@@ -29,16 +32,16 @@ namespace keycloak
         OidcEndpoints endpoints;
     };
 
-    template <HttpClientLike HttpClient>
+    template <AsyncHttpClientLike HttpClient>
     class OidcDiscoveryClient
     {
     public:
         explicit OidcDiscoveryClient(HttpClient &http_client) : http_client_(http_client) {}
 
-        DiscoveryResult discover(const std::string &base_url,
-                                 const std::string &realm)
+        usub::uvent::task::Awaitable<DiscoveryResult> discover(const std::string &base_url,
+                                                               const std::string &realm)
         {
-            const auto response = http_client_.send(
+            const auto response = co_await http_client_.send(
                 detail::make_json_get(detail::discovery_endpoint(base_url, realm)));
             const int http_status = response.metadata.status_code > 0 ? response.metadata.status_code : 502;
 
@@ -55,7 +58,7 @@ namespace keycloak
 
             if (http_status < 200 || http_status >= 300)
             {
-                return DiscoveryResult{
+                co_return DiscoveryResult{
                     .ok = false,
                     .http_status = http_status,
                     .error = detail::extract_json_string(response.body, "error").value_or("oidc_discovery_failed"),
@@ -63,7 +66,7 @@ namespace keycloak
                 };
             }
 
-            return DiscoveryResult{
+            co_return DiscoveryResult{
                 .ok = true,
                 .http_status = http_status,
                 .error = "",

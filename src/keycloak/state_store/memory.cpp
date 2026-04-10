@@ -32,8 +32,9 @@ namespace keycloak
         }
     }
 
-    std::string MemoryStateStore::create_state(std::string_view code_verifier,
-                                               std::chrono::seconds ttl)
+    usub::uvent::task::Awaitable<std::string> MemoryStateStore::create_state(
+        std::string_view code_verifier,
+        std::chrono::seconds ttl)
     {
         std::lock_guard lk(m_);
         cleanup_expired_unsafe();
@@ -41,21 +42,22 @@ namespace keycloak
         std::string state = random_state_32();
         map_[state] = Entry{std::string(code_verifier),
                             std::chrono::steady_clock::now() + ttl};
-        return state;
+        co_return state;
     }
 
-    std::optional<std::string> MemoryStateStore::consume_state(std::string_view state)
+    usub::uvent::task::Awaitable<std::optional<std::string>> MemoryStateStore::consume_state(
+        std::string_view state)
     {
         std::lock_guard lk(m_);
         cleanup_expired_unsafe();
 
         auto it = map_.find(std::string(state));
         if (it == map_.end())
-            return std::nullopt;
+            co_return std::nullopt;
 
         std::string verifier = std::move(it->second.verifier);
         map_.erase(it);
-        return verifier;
+        co_return verifier;
     }
 
 } // namespace keycloak

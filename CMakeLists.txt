@@ -28,7 +28,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   unet
   GIT_REPOSITORY https://github.com/Usub-development/unet.git
-  GIT_TAG strict_parsing
+  GIT_TAG 3110c269abe12488a7f1a0c0cb77be9186c764e1
 )
 
 FetchContent_Declare(

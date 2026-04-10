@@ -7,16 +7,19 @@
 #include <string_view>
 #include <unordered_map>
 
+#include <uvent/tasks/Awaitable.h>
+#include <uvent/tasks/AwaitableFrame.h>
+
 namespace keycloak
 {
 
     class MemoryStateStore
     {
     public:
-        std::string create_state(std::string_view code_verifier,
-                                 std::chrono::seconds ttl);
+        usub::uvent::task::Awaitable<std::string> create_state(std::string_view code_verifier,
+                                                               std::chrono::seconds ttl);
 
-        std::optional<std::string> consume_state(std::string_view state);
+        usub::uvent::task::Awaitable<std::optional<std::string>> consume_state(std::string_view state);
         std::string random_state_32();
         void cleanup_expired_unsafe();
 

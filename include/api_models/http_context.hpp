@@ -1,6 +1,7 @@
 #pragma once
 
 #include <any>
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,7 @@ struct AuthConfig
 {
     std::string expected_issuer;
     std::string jwks_url;
+    std::chrono::seconds jwks_cache_ttl{std::chrono::seconds{300}};
     bool require_audience = false;
     std::string expected_audience;
     std::string expected_azp;

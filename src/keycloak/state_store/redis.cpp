@@ -1,5 +1,7 @@
 #include "keycloak/state_store/redis.hpp"
 
+#include <algorithm>
+#include <cstdint>
 #include <random>
 #include <stdexcept>
 #include <utility>
@@ -33,19 +35,76 @@ namespace keycloak
         return s;
     }
 
-    // TODO: rewrite state store to the asynchrous so that i can implement uredis later
-    std::string RedisStateStore::create_state(std::string_view code_verifier,
-                                              std::chrono::seconds ttl)
+    namespace
     {
-        (void)code_verifier;
-        (void)ttl;
-        throw std::runtime_error("RedisStateStore::create_state is not implemented yet");
+        std::runtime_error redis_failure(std::string_view operation, const usub::uredis::RedisError& error)
+        {
+            return std::runtime_error(
+                std::string(operation) + " failed: " + error.message);
+        }
     }
 
-    std::optional<std::string> RedisStateStore::consume_state(std::string_view state)
+    usub::uvent::task::Awaitable<std::string> RedisStateStore::create_state(
+        std::string_view code_verifier,
+        std::chrono::seconds ttl)
     {
-        (void)state;
-        throw std::runtime_error("RedisStateStore::consume_state is not implemented yet");
+        const int ttl_seconds = static_cast<int>(std::max<std::int64_t>(1, ttl.count()));
+        const std::string ttl_text = std::to_string(ttl_seconds);
+
+        for (int attempt = 0; attempt < 8; ++attempt)
+        {
+            std::string state = random_state_32();
+            std::string key = make_key(state);
+
+            auto response = co_await redis_.command("SET",
+                                                    key,
+                                                    code_verifier,
+                                                    "EX",
+                                                    ttl_text,
+                                                    "NX");
+            if (!response)
+            {
+                throw redis_failure("RedisStateStore::create_state", response.error());
+            }
+
+            // SET NX returns a nil reply when the key already exists.
+            if (response->is_null())
+            {
+                continue;
+            }
+
+            if (!response->is_simple_string() || response->as_string() != "OK")
+            {
+                throw std::runtime_error("RedisStateStore::create_state failed: unexpected Redis reply");
+            }
+
+            co_return state;
+        }
+
+        throw std::runtime_error("RedisStateStore::create_state failed: unable to allocate unique state");
+    }
+
+    usub::uvent::task::Awaitable<std::optional<std::string>> RedisStateStore::consume_state(
+        std::string_view state)
+    {
+        const std::string key = make_key(state);
+        auto response = co_await redis_.command("GETDEL", key);
+        if (!response)
+        {
+            throw redis_failure("RedisStateStore::consume_state", response.error());
+        }
+
+        if (response->is_null())
+        {
+            co_return std::nullopt;
+        }
+
+        if (!response->is_bulk_string() && !response->is_simple_string())
+        {
+            throw std::runtime_error("RedisStateStore::consume_state failed: unexpected Redis reply");
+        }
+
+        co_return response->as_string();
     }
 
 } // namespace keycloak

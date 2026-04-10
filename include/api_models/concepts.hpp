@@ -14,8 +14,8 @@ namespace keycloak
     template <class S>
     concept StateStoreLike =
         requires(S &s, std::string_view verifier, std::chrono::seconds ttl, std::string_view state) {
-            { s.create_state(verifier, ttl) } -> std::same_as<std::string>;
-            { s.consume_state(state) } -> std::same_as<std::optional<std::string>>;
+            { s.create_state(verifier, ttl) } -> std::same_as<usub::uvent::task::Awaitable<std::string>>;
+            { s.consume_state(state) } -> std::same_as<usub::uvent::task::Awaitable<std::optional<std::string>>>;
             { s.random_state_32() } -> std::same_as<std::string>;
             { s.cleanup_expired_unsafe() } -> std::same_as<void>;
         };
@@ -24,15 +24,6 @@ namespace keycloak
     concept HttpClientLike =
         requires(C &c, const usub::unet::http::Request &request) {
             { c.send(request) } -> std::same_as<usub::unet::http::Response>;
-        };
-
-    template <class S>
-    concept AsyncStateStoreLike =
-        requires(S &s, std::string_view verifier, std::chrono::seconds ttl, std::string_view state) {
-            { s.create_state(verifier, ttl) } -> std::same_as<usub::uvent::task::Awaitable<std::string>>;
-            { s.consume_state(state) } -> std::same_as<usub::uvent::task::Awaitable<std::optional<std::string>>>;
-            { s.random_state_32() } -> std::same_as<std::string>;
-            { s.cleanup_expired_unsafe() } -> std::same_as<void>;
         };
 
     template <class C>

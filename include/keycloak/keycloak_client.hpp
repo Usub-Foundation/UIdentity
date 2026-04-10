@@ -6,6 +6,8 @@
 #include <utility>
 
 #include <unet/http.hpp>
+#include <uvent/tasks/Awaitable.h>
+#include <uvent/tasks/AwaitableFrame.h>
 
 #include "api_models/concepts.hpp"
 #include "api_models/http_context.hpp"
@@ -32,13 +34,13 @@ namespace keycloak
     template <class T>
     concept TokenServiceLike =
         requires(T &t, std::string_view code, std::string_view verifier) {
-            { t.exchange_authorization_code(code, verifier) } -> std::same_as<OAuthResult>;
+            { t.exchange_authorization_code(code, verifier) } -> std::same_as<usub::uvent::task::Awaitable<OAuthResult>>;
         };
 
     template <class M>
     concept AuthMiddlewareLike =
         requires(const M &m, usub::unet::http::Request &request, RequestContext &ctx) {
-            { m.authenticate(request, ctx) } -> std::same_as<AuthResult>;
+            { m.authenticate(request, ctx) } -> std::same_as<usub::uvent::task::Awaitable<AuthResult>>;
         };
 
     template <StateStoreLike Store, TokenServiceLike TokenSvc, AuthMiddlewareLike Middleware>
@@ -57,36 +59,37 @@ namespace keycloak
         {
         }
 
-        AuthStart start_login(std::chrono::seconds ttl = std::chrono::minutes(5))
+        usub::uvent::task::Awaitable<AuthStart> start_login(
+            std::chrono::seconds ttl = std::chrono::minutes(5))
         {
             const auto pkce = generate_pkce_pair(/*verifier_len=*/64);
-            std::string state = state_store_.create_state(pkce.code_verifier, ttl);
-            return auth_strategy_.create_authorization_url(std::move(state), pkce);
+            std::string state = co_await state_store_.create_state(pkce.code_verifier, ttl);
+            co_return auth_strategy_.create_authorization_url(std::move(state), pkce);
         }
 
-        CallbackResult complete_login(const CallbackInput &input)
+        usub::uvent::task::Awaitable<CallbackResult> complete_login(const CallbackInput &input)
         {
             if (input.code.empty() || input.state.empty())
             {
-                return CallbackResult{
+                co_return CallbackResult{
                     .ok = false,
                     .http_status = 400,
                     .error = "missing_code_or_state",
                 };
             }
 
-            const auto verifier = state_store_.consume_state(input.state);
+            const auto verifier = co_await state_store_.consume_state(input.state);
             if (!verifier.has_value())
             {
-                return CallbackResult{
+                co_return CallbackResult{
                     .ok = false,
                     .http_status = 401,
                     .error = "invalid_or_expired_state",
                 };
             }
 
-            const auto oauth_result = token_service_.exchange_authorization_code(input.code, *verifier);
-            return CallbackResult{
+            const auto oauth_result = co_await token_service_.exchange_authorization_code(input.code, *verifier);
+            co_return CallbackResult{
                 .ok = oauth_result.ok,
                 .http_status = oauth_result.http_status,
                 .error = oauth_result.error,
@@ -94,9 +97,11 @@ namespace keycloak
             };
         }
 
-        AuthResult authenticate_request(usub::unet::http::Request &request, RequestContext &ctx) const
+        usub::uvent::task::Awaitable<AuthResult> authenticate_request(
+            usub::unet::http::Request &request,
+            RequestContext &ctx) const
         {
-            return auth_middleware_.authenticate(request, ctx);
+            co_return co_await auth_middleware_.authenticate(request, ctx);
         }
 
     private:

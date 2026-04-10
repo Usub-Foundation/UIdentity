@@ -21,7 +21,7 @@ public:
     ServerHandler login(usub::unet::http::Request &request, usub::unet::http::Response &response) {
         (void) request;
 
-        const auto auth_start = this->client_.start_login(std::chrono::minutes(5));
+        const auto auth_start = co_await this->client_.start_login(std::chrono::minutes(5));
 
         response.setStatus(302);
         response.addHeader("Location", auth_start.authorization_url);
@@ -43,7 +43,7 @@ public:
 
         const auto code_it = params.find("code");
         const auto state_it = params.find("state");
-        const auto result = this->client_.complete_login({
+        const auto result = co_await this->client_.complete_login({
                 .code = code_it == params.end() ? std::string{} : code_it->second,
                 .state = state_it == params.end() ? std::string{} : state_it->second,
         });

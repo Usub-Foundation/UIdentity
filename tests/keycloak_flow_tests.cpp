@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -17,8 +18,10 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <uvent/Uvent.h>
 #include <unet/http.hpp>
 #include <uvent/tasks/AwaitableFrame.h>
+#include <uredis/RedisClusterClient.h>
 
 #include "api_models/http_context.hpp"
 #include "keycloak/auth/bearer_auth_middleware.hpp"
@@ -28,6 +31,7 @@
 #include "keycloak/keycloak_client.hpp"
 #include "keycloak/oidc/discovery.hpp"
 #include "keycloak/state_store/memory.hpp"
+#include "keycloak/state_store/redis.hpp"
 
 namespace
 {
@@ -36,22 +40,22 @@ namespace
         std::function<usub::unet::http::Response(const usub::unet::http::Request &)> handler;
         std::vector<usub::unet::http::Request> requests;
 
-        usub::unet::http::Response send(const usub::unet::http::Request &request)
+        usub::uvent::task::Awaitable<usub::unet::http::Response> send(const usub::unet::http::Request &request)
         {
             requests.push_back(request);
             if (!handler)
             {
-                return {};
+                co_return usub::unet::http::Response{};
             }
-            return handler(request);
+            co_return handler(request);
         }
     };
 
     struct FakeAuthMiddleware
     {
-        AuthResult authenticate(usub::unet::http::Request &, RequestContext &) const
+        usub::uvent::task::Awaitable<AuthResult> authenticate(usub::unet::http::Request &, RequestContext &) const
         {
-            return AuthResult{
+            co_return AuthResult{
                 .ok = true,
                 .http_status = 200,
                 .error = "",
@@ -65,6 +69,63 @@ namespace
         {
             throw std::runtime_error(std::string(message));
         }
+    }
+
+    template <class Fn>
+    void run_async_test(Fn &&fn)
+    {
+        usub::Uvent uvent{1};
+        std::exception_ptr failure;
+
+        usub::uvent::system::co_spawn([&]() -> usub::uvent::task::Awaitable<void>
+        {
+            try
+            {
+                co_await fn();
+            }
+            catch (...)
+            {
+                failure = std::current_exception();
+            }
+
+            uvent.stop();
+            co_return;
+        }());
+
+        uvent.run();
+
+        if (failure)
+        {
+            std::rethrow_exception(failure);
+        }
+    }
+
+    std::optional<std::string> getenv_string(const char *name)
+    {
+        if (const char *value = std::getenv(name))
+        {
+            if (*value != '\0')
+            {
+                return std::string(value);
+            }
+        }
+        return std::nullopt;
+    }
+
+    int getenv_int(const char *name, int fallback)
+    {
+        if (auto value = getenv_string(name))
+        {
+            try
+            {
+                return std::stoi(*value);
+            }
+            catch (...)
+            {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     std::string base64url_encode(std::string_view input)
@@ -196,7 +257,7 @@ namespace
         return signing_input + "." + base64url_encode(signature);
     }
 
-    void test_oidc_discovery()
+    usub::uvent::task::Awaitable<void> test_oidc_discovery()
     {
         FakeHttpClient http;
         http.handler = [](const usub::unet::http::Request &request)
@@ -209,12 +270,13 @@ namespace
         };
 
         keycloak::OidcDiscoveryClient<FakeHttpClient> discovery(http);
-        const auto result = discovery.discover("https://issuer.example", "demo");
+        const auto result = co_await discovery.discover("https://issuer.example", "demo");
         require(result.ok, "discovery should succeed");
         require(result.endpoints.jwks_uri == "https://issuer.example/jwks", "jwks endpoint mismatch");
+        co_return;
     }
 
-    void test_pkce_and_callback_flow()
+    usub::uvent::task::Awaitable<void> test_pkce_and_callback_flow()
     {
         keycloak::KeycloakRealmConfig cfg;
         cfg.base_url = "https://issuer.example";
@@ -251,7 +313,7 @@ namespace
                                  FakeAuthMiddleware>
             client(cfg, store, token_service, auth_middleware);
 
-        const auto auth_start = client.start_login(std::chrono::minutes(5));
+        const auto auth_start = co_await client.start_login(std::chrono::minutes(5));
         require(!auth_start.state.empty(), "state should be generated");
         require(auth_start.authorization_url.find("code_challenge=") != std::string::npos, "authorization URL should include PKCE challenge");
 
@@ -259,15 +321,16 @@ namespace
             .code = "auth-code",
             .state = auth_start.state,
         };
-        const auto callback_result = client.complete_login(callback_input);
+        const auto callback_result = co_await client.complete_login(callback_input);
         require(callback_result.ok, "callback should succeed");
         require(callback_result.tokens.access_token == "access-1", "callback access token mismatch");
 
-        const auto second_try = client.complete_login(callback_input);
+        const auto second_try = co_await client.complete_login(callback_input);
         require(!second_try.ok, "state replay should fail");
+        co_return;
     }
 
-    void test_token_service_endpoints()
+    usub::uvent::task::Awaitable<void> test_token_service_endpoints()
     {
         FakeHttpClient http;
         keycloak::TokenServiceConfig token_cfg{
@@ -324,27 +387,28 @@ namespace
 
         keycloak::TokenService<FakeHttpClient> token_service(token_cfg, http);
 
-        const auto exchange = token_service.exchange_authorization_code("code-1", "verifier-1");
+        const auto exchange = co_await token_service.exchange_authorization_code("code-1", "verifier-1");
         require(exchange.ok, "authorization code exchange should succeed");
         require(exchange.tokens.access_token == "access-1", "exchange access token mismatch");
 
-        const auto refresh = token_service.refresh_tokens("refresh-1");
+        const auto refresh = co_await token_service.refresh_tokens("refresh-1");
         require(refresh.ok, "refresh should succeed");
         require(refresh.tokens.access_token == "access-2", "refresh access token mismatch");
 
-        const auto revoke = token_service.revoke_token("refresh-2");
+        const auto revoke = co_await token_service.revoke_token("refresh-2");
         require(revoke.ok, "revoke should succeed");
 
-        const auto introspection = token_service.introspect_token("access-2");
+        const auto introspection = co_await token_service.introspect_token("access-2");
         require(introspection.ok, "introspection should succeed");
         require(introspection.user_info.roles.size() == 1, "introspection should parse roles");
 
-        const auto user_info = token_service.fetch_user_info("access-2");
+        const auto user_info = co_await token_service.fetch_user_info("access-2");
         require(user_info.ok, "userinfo should succeed");
         require(user_info.user_info.email == "alice@example.com", "userinfo email mismatch");
+        co_return;
     }
 
-    void test_validator_and_bearer_middleware()
+    usub::uvent::task::Awaitable<void> test_validator_and_bearer_middleware()
     {
         const auto key_material = make_test_key_material();
         const std::string issuer = "https://issuer.example/realms/demo";
@@ -372,10 +436,15 @@ namespace
         };
 
         keycloak::AccessTokenValidator<FakeHttpClient> validator(auth_cfg, http);
-        const auto validation = validator.validate(jwt);
+        const auto validation = co_await validator.validate(jwt);
         require(validation.ok, "validator should accept signed jwt");
         require(validation.context.roles.size() == 2, "validator should merge realm and client roles");
         require(validation.context.preferred_username == "alice", "validator username mismatch");
+        require(http.requests.size() == 1, "validator should fetch jwks once");
+
+        const auto validation_again = co_await validator.validate(jwt);
+        require(validation_again.ok, "validator should accept signed jwt on second validation");
+        require(http.requests.size() == 1, "validator should reuse cached jwks");
 
         keycloak::BearerAuthMiddleware<keycloak::AccessTokenValidator<FakeHttpClient>> middleware(validator);
         usub::unet::http::Request request{
@@ -387,12 +456,46 @@ namespace
         };
         request.headers.addHeader("Authorization", "Bearer " + jwt);
         RequestContext context;
-        const auto auth_result = middleware.authenticate(request, context);
+        const auto auth_result = co_await middleware.authenticate(request, context);
         require(auth_result.ok, "middleware should authenticate valid bearer token");
         require(context.authenticated, "middleware should propagate authenticated context");
         const auto *stored_context = get_request_context(request);
         require(stored_context != nullptr, "middleware should store request context in user_data");
         require(stored_context->preferred_username == "alice", "stored request context username mismatch");
+        co_return;
+    }
+
+    usub::uvent::task::Awaitable<void> test_live_redis_state_store_if_configured()
+    {
+        if (!getenv_string("UIDENTITY_TEST_REDIS"))
+        {
+            co_return;
+        }
+
+        usub::uredis::RedisClusterConfig redis_cfg;
+        redis_cfg.seeds = {{
+            .host = getenv_string("UIDENTITY_TEST_REDIS_HOST").value_or("127.0.0.1"),
+            .port = static_cast<std::uint16_t>(getenv_int("UIDENTITY_TEST_REDIS_PORT", 6379)),
+        }};
+        redis_cfg.password = getenv_string("UIDENTITY_TEST_REDIS_PASSWORD");
+        redis_cfg.username = getenv_string("UIDENTITY_TEST_REDIS_USERNAME");
+        redis_cfg.force_standalone = true;
+
+        usub::uredis::RedisClusterClient redis(redis_cfg);
+        const auto connect_result = co_await redis.connect();
+        require(static_cast<bool>(connect_result), "redis connect should succeed");
+
+        keycloak::RedisStateStore store(redis, "kc:test:state:");
+        const auto state = co_await store.create_state("verifier-123", std::chrono::seconds(30));
+        require(!state.empty(), "redis state should be created");
+
+        const auto verifier = co_await store.consume_state(state);
+        require(verifier.has_value(), "redis state should be consumable");
+        require(*verifier == "verifier-123", "redis verifier mismatch");
+
+        const auto second_try = co_await store.consume_state(state);
+        require(!second_try.has_value(), "redis state should be one-time use");
+        co_return;
     }
 } // namespace
 
@@ -400,10 +503,11 @@ int main()
 {
     try
     {
-        test_oidc_discovery();
-        test_pkce_and_callback_flow();
-        test_token_service_endpoints();
-        test_validator_and_bearer_middleware();
+        run_async_test(test_oidc_discovery);
+        run_async_test(test_pkce_and_callback_flow);
+        run_async_test(test_token_service_endpoints);
+        run_async_test(test_validator_and_bearer_middleware);
+        run_async_test(test_live_redis_state_store_if_configured);
         std::cout << "All UIdentity tests passed.\n";
         return EXIT_SUCCESS;
     }
