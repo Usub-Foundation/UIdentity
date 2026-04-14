@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,10 @@ namespace keycloak
 
         // Example: {"openid","profile","email"}
         std::vector<std::string> scopes;
+
+        // PKCE code_verifier length. RFC 7636 allows 43..128.
+        // The generator clamps out-of-range values; default stays at 64.
+        std::size_t pkce_verifier_len = 64;
 
         // If true, omit :443 for https and :80 for http (cosmetic)
         bool omit_default_port = true;

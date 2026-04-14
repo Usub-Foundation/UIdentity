@@ -24,6 +24,7 @@
 #include <uredis/RedisClusterClient.h>
 
 #include "api_models/http_context.hpp"
+#include "handlers/AuthHandler.h"
 #include "keycloak/auth/bearer_auth_middleware.hpp"
 #include "keycloak/auth/pkce_auth_strat.hpp"
 #include "keycloak/detail/oidc_utils.hpp"
@@ -32,6 +33,7 @@
 #include "keycloak/oidc/discovery.hpp"
 #include "keycloak/state_store/memory.hpp"
 #include "keycloak/state_store/redis.hpp"
+#include "utils/cookies.hpp"
 
 namespace
 {
@@ -58,6 +60,40 @@ namespace
             co_return AuthResult{
                 .ok = true,
                 .http_status = 200,
+                .error = "",
+            };
+        }
+    };
+
+    struct FakeHandlerClient
+    {
+        keycloak::CallbackResult callback_result{};
+
+        usub::uvent::task::Awaitable<keycloak::AuthStart> start_login(std::chrono::seconds)
+        {
+            co_return keycloak::AuthStart{
+                .authorization_url = "https://issuer.example/auth?state=state-1",
+                .state = "state-1",
+            };
+        }
+
+        usub::uvent::task::Awaitable<keycloak::CallbackResult> complete_login(const keycloak::CallbackInput &)
+        {
+            co_return callback_result;
+        }
+    };
+
+    struct FakeHandlerTokenService
+    {
+        std::vector<std::string> revoked_tokens;
+
+        usub::uvent::task::Awaitable<keycloak::OAuthResult> revoke_token(std::string_view token,
+                                                                         std::string_view = "refresh_token")
+        {
+            revoked_tokens.emplace_back(token);
+            co_return keycloak::OAuthResult{
+                .ok = true,
+                .http_status = 204,
                 .error = "",
             };
         }
@@ -497,6 +533,76 @@ namespace
         require(!second_try.has_value(), "redis state should be one-time use");
         co_return;
     }
+
+    usub::uvent::task::Awaitable<void> test_cookie_helpers_and_auth_handler_flow()
+    {
+        const auto parsed = utils::parse_cookie_header("access_token=abc.def; refresh_token=refresh%201");
+        require(parsed.at("access_token") == "abc.def", "access token cookie should parse");
+        require(parsed.at("refresh_token") == "refresh 1", "refresh token cookie should decode");
+
+        FakeHandlerClient client{
+            .callback_result = {
+                .ok = true,
+                .http_status = 200,
+                .error = "",
+                .tokens = {
+                    .access_token = "access-1",
+                    .id_token = "id-1",
+                    .refresh_token = "refresh-1",
+                    .token_type = "Bearer",
+                    .scope = "openid profile",
+                    .expires_in = 300,
+                    .refresh_expires_in = 3600,
+                },
+            },
+        };
+        FakeHandlerTokenService token_service;
+        handlers::AuthHandlerConfig config;
+        config.token_cookies.secure = false;
+        config.post_login_redirect = "/app";
+        config.post_logout_redirect = "/signed-out";
+
+        handlers::AuthHandler handler(client, token_service, config);
+
+        usub::unet::http::Request callback_request{
+            .metadata = {
+                .method_token = "GET",
+                .uri = {.path = "/api/v1/callback", .query = "code=auth-code&state=state-1"},
+            },
+        };
+        usub::unet::http::Response callback_response;
+        co_await handler.callback(callback_request, callback_response);
+
+        require(callback_response.metadata.status_code == 302, "callback should redirect");
+        require(callback_response.headers.value("Location").value_or("") == "/app", "callback redirect mismatch");
+        const auto set_cookies = callback_response.headers.all("Set-Cookie");
+        require(set_cookies.size() == 2, "callback should set access and refresh cookies");
+        require(set_cookies[0].value.find("access_token=access-1") != std::string::npos, "access cookie missing");
+        require(set_cookies[1].value.find("refresh_token=refresh-1") != std::string::npos, "refresh cookie missing");
+        require(set_cookies[0].value.find("HttpOnly") != std::string::npos, "access cookie should be httpOnly");
+        require(set_cookies[0].value.find("SameSite=Lax") != std::string::npos, "access cookie should include sameSite");
+
+        usub::unet::http::Request logout_request{
+            .metadata = {
+                .method_token = "GET",
+                .uri = {.path = "/auth/logout"},
+            },
+        };
+        logout_request.headers.addHeader(std::string_view{"Cookie"},
+                                         std::string_view{"access_token=access-1; refresh_token=refresh-1"});
+        usub::unet::http::Response logout_response;
+        co_await handler.logout(logout_request, logout_response);
+
+        require(logout_response.metadata.status_code == 302, "logout should redirect");
+        require(logout_response.headers.value("Location").value_or("") == "/signed-out", "logout redirect mismatch");
+        require(token_service.revoked_tokens.size() == 1, "logout should revoke refresh token");
+        require(token_service.revoked_tokens[0] == "refresh-1", "logout should revoke cookie refresh token");
+        const auto expired_cookies = logout_response.headers.all("Set-Cookie");
+        require(expired_cookies.size() == 2, "logout should clear both cookies");
+        require(expired_cookies[0].value.find("Max-Age=0") != std::string::npos, "cleared access cookie should expire");
+        require(expired_cookies[1].value.find("Max-Age=0") != std::string::npos, "cleared refresh cookie should expire");
+        co_return;
+    }
 } // namespace
 
 int main()
@@ -508,6 +614,7 @@ int main()
         run_async_test(test_token_service_endpoints);
         run_async_test(test_validator_and_bearer_middleware);
         run_async_test(test_live_redis_state_store_if_configured);
+        run_async_test(test_cookie_helpers_and_auth_handler_flow);
         std::cout << "All UIdentity tests passed.\n";
         return EXIT_SUCCESS;
     }

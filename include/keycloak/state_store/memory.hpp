@@ -1,4 +1,3 @@
-// TODO: this is a temporary in-memory state store for PKCE states. replace with Redis after.
 #pragma once
 #include <chrono>
 #include <mutex>

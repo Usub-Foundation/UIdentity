@@ -97,7 +97,7 @@ namespace
 namespace keycloak
 {
 
-    PkcePair generate_pkce_pair(std::size_t verifier_len) // TODO: add verifier_len as a config param instead
+    PkcePair generate_pkce_pair(std::size_t verifier_len)
     {
         // RFC 7636: 43..128
         if (verifier_len < 43)

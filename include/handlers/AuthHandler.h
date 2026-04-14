@@ -9,14 +9,24 @@
 #include <unet/http.hpp>
 
 #include "keycloak/keycloak_client.hpp"
+#include "keycloak/oauth/token_service.hpp"
+#include "utils/cookies.hpp"
 #include "utils/url_encode.hpp"
 
 namespace handlers {
 
-template<class Client>
+struct AuthHandlerConfig {
+    utils::TokenCookieConfig token_cookies;
+    std::string post_login_redirect{"/"};
+    std::string post_logout_redirect{"/"};
+    bool revoke_refresh_token_on_logout{true};
+};
+
+template<class Client, class TokenService>
 class AuthHandler {
 public:
-    explicit AuthHandler(Client &client) : client_(client) {}
+    AuthHandler(Client &client, TokenService &token_service, AuthHandlerConfig config)
+        : client_(client), token_service_(token_service), config_(std::move(config)) {}
 
     ServerHandler login(usub::unet::http::Request &request, usub::unet::http::Response &response) {
         (void) request;
@@ -50,27 +60,61 @@ public:
 
         response.addHeader("Cache-Control", "no-store");
         response.addHeader("Pragma", "no-cache");
-        response.addHeader("Content-Type", "application/json");
-        response.setStatus(static_cast<std::uint16_t>(result.http_status));
 
         if (!result.ok) {
+            response.addHeader("Content-Type", "application/json");
+            response.setStatus(static_cast<std::uint16_t>(result.http_status));
             response.setBody(std::string{"{\"ok\":false,\"error\":\""} + json_escape(result.error) + "\"}");
             co_return;
         }
 
-        response.setBody(
-                "{\"ok\":true,"
-                "\"access_token\":\"" + json_escape(result.tokens.access_token) + "\","
-                "\"id_token\":\"" + json_escape(result.tokens.id_token) + "\","
-                "\"refresh_token\":\"" + json_escape(result.tokens.refresh_token) + "\","
-                "\"token_type\":\"" + json_escape(result.tokens.token_type) + "\","
-                "\"scope\":\"" + json_escape(result.tokens.scope) + "\","
-                "\"expires_in\":" + std::to_string(result.tokens.expires_in) + ","
-                "\"refresh_expires_in\":" + std::to_string(result.tokens.refresh_expires_in) + "}");
+        add_token_cookies(response, result.tokens);
+        response.setStatus(302);
+        response.addHeader("Location", config_.post_login_redirect);
+        response.setBody("");
+        co_return;
+    }
+
+    ServerHandler logout(usub::unet::http::Request &request, usub::unet::http::Response &response) {
+        response.addHeader("Cache-Control", "no-store");
+        response.addHeader("Pragma", "no-cache");
+
+        if (config_.revoke_refresh_token_on_logout) {
+            if (const auto refresh_token = utils::get_cookie(request, config_.token_cookies.refresh_token_name);
+                refresh_token.has_value() && !refresh_token->empty()) {
+                (void) co_await token_service_.revoke_token(*refresh_token);
+            }
+        }
+
+        clear_token_cookies(response);
+        response.setStatus(302);
+        response.addHeader("Location", config_.post_logout_redirect);
+        response.setBody("");
         co_return;
     }
 
 private:
+    void add_token_cookies(usub::unet::http::Response &response, const keycloak::TokenSet &tokens) const {
+        response.addHeader("Set-Cookie",
+                           utils::make_set_cookie(
+                                   config_.token_cookies.access_token_name,
+                                   tokens.access_token,
+                                   utils::token_cookie_options(config_.token_cookies, tokens.expires_in)));
+        response.addHeader("Set-Cookie",
+                           utils::make_set_cookie(
+                                   config_.token_cookies.refresh_token_name,
+                                   tokens.refresh_token,
+                                   utils::token_cookie_options(config_.token_cookies, tokens.refresh_expires_in)));
+    }
+
+    void clear_token_cookies(usub::unet::http::Response &response) const {
+        const auto cookie_options = utils::token_cookie_options(config_.token_cookies);
+        response.addHeader("Set-Cookie",
+                           utils::make_expired_cookie(config_.token_cookies.access_token_name, cookie_options));
+        response.addHeader("Set-Cookie",
+                           utils::make_expired_cookie(config_.token_cookies.refresh_token_name, cookie_options));
+    }
+
     static std::string decode_form_component(std::string_view value) {
         std::string normalized;
         normalized.reserve(value.size());
@@ -143,6 +187,8 @@ private:
     }
 
     Client &client_;
+    TokenService &token_service_;
+    AuthHandlerConfig config_;
 };
 
 } // namespace handlers

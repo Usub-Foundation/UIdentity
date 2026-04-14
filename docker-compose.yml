@@ -10,10 +10,10 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: adminadmin
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME: http://212.2.234.213:18080
+      KC_HOSTNAME: http://localhost:8080
       KC_HOSTNAME_STRICT: "false"
     ports:
-      - "18080:8080"
+      - "8080:8080"
     volumes:
       - ./docker/keycloak/realm-import:/opt/keycloak/data/import:ro
 
@@ -28,11 +28,11 @@ services:
       UIDENTITY_LISTEN_HOST: 0.0.0.0
       UIDENTITY_LISTEN_PORT: 22813
       UIDENTITY_UVENT_THREADS: 1
-      UIDENTITY_KEYCLOAK_AUTH_BASE_URL: http://212.2.234.213:18080
+      UIDENTITY_KEYCLOAK_AUTH_BASE_URL: http://localhost:8080
       UIDENTITY_KEYCLOAK_INTERNAL_BASE_URL: http://keycloak:8080
       UIDENTITY_KEYCLOAK_REALM: trader
       UIDENTITY_KEYCLOAK_CLIENT_ID: myclient
-      UIDENTITY_KEYCLOAK_REDIRECT_URI: http://212.2.234.213:22813/api/v1/callback
+      UIDENTITY_KEYCLOAK_REDIRECT_URI: http://localhost:22813/api/v1/callback
       UIDENTITY_KEYCLOAK_SCOPES: openid profile email
       UIDENTITY_REDIS_HOST: redis
       UIDENTITY_REDIS_PORT: 6379

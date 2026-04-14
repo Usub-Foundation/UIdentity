@@ -62,7 +62,7 @@ namespace keycloak
         usub::uvent::task::Awaitable<AuthStart> start_login(
             std::chrono::seconds ttl = std::chrono::minutes(5))
         {
-            const auto pkce = generate_pkce_pair(/*verifier_len=*/64);
+            const auto pkce = generate_pkce_pair(cfg_.pkce_verifier_len);
             std::string state = co_await state_store_.create_state(pkce.code_verifier, ttl);
             co_return auth_strategy_.create_authorization_url(std::move(state), pkce);
         }

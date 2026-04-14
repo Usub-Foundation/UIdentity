@@ -10,6 +10,8 @@
 - Token revocation, introspection, and userinfo requests
 - OIDC discovery from the well-known configuration endpoint
 - Bearer token middleware with JWT signature and claim validation against JWKS
+- JWKS caching for repeated token validation
+- Cookie-based login, logout, and protected route access in the example app
 - Redis-backed PKCE state storage
 
 ## Current shape
@@ -20,8 +22,8 @@ The HTTP transport stays dependency-injected through the async HTTP concepts in 
 
 ## Still pending
 
-- JWKS caching and broader production hardening are still pending.
-- Live end-to-end integration against a real Keycloak instance is available through Docker, but not yet covered by automated CI.
+- Broader production hardening is still pending.
+- The full Docker Keycloak flow is available locally, while CI currently covers build-and-test only.
 
 ## Build
 
@@ -39,9 +41,12 @@ Important variables:
 
 - `UIDENTITY_KEYCLOAK_AUTH_BASE_URL`: the browser-facing Keycloak URL used in generated login redirects
 - `UIDENTITY_KEYCLOAK_INTERNAL_BASE_URL`: the URL the app itself uses to call Keycloak token/JWKS endpoints
+- `UIDENTITY_KEYCLOAK_REDIRECT_URI`: the callback URL registered with Keycloak
 - `UIDENTITY_REDIS_HOST` / `UIDENTITY_REDIS_PORT`: Redis connection settings
 - `UIDENTITY_LISTEN_HOST` / `UIDENTITY_LISTEN_PORT`: app bind address
 - `UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS`: JWKS cache lifetime
+- `UIDENTITY_COOKIE_ACCESS_TOKEN_NAME` / `UIDENTITY_COOKIE_REFRESH_TOKEN_NAME`: cookie names used by the example app
+- `UIDENTITY_POST_LOGIN_REDIRECT` / `UIDENTITY_POST_LOGOUT_REDIRECT`: browser redirects after login/logout
 - `UIDENTITY_HEALTH_PATH` / `UIDENTITY_READY_PATH`: live and readiness endpoints
 
 ## Docker Demo
@@ -72,13 +77,15 @@ Demo flow:
 
 1. Open `http://localhost:22813/auth/login`
 2. Sign in as `alice`
-3. The callback returns JSON tokens
-4. Call `GET http://localhost:22813/api/v1/me` with `Authorization: Bearer <access_token>`
+3. Keycloak redirects back to the callback, which stores the access and refresh tokens in `HttpOnly` cookies
+4. Open `http://localhost:22813/api/v1/me` in the same browser session
+5. Optionally call `GET http://localhost:22813/auth/logout` to clear cookies and revoke the refresh token
 
 Example:
 
 ```bash
-curl -H "Authorization: Bearer <access_token>" \
+curl -i \
+  --cookie "access_token=<access_token>; refresh_token=<refresh_token>" \
   http://localhost:22813/api/v1/me
 ```
 
@@ -91,4 +98,5 @@ The repository now includes a self-contained test executable in `tests/keycloak_
 - Token service endpoints
 - JWT validation against JWKS
 - Bearer middleware context propagation
+- Cookie helpers plus login/logout handler behavior
 - Optional live Redis integration when `UIDENTITY_TEST_REDIS=1`

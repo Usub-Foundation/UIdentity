@@ -19,10 +19,10 @@
       "serviceAccountsEnabled": false,
       "implicitFlowEnabled": false,
       "redirectUris": [
-        "http://212.2.234.213:22813/api/v1/callback"
+        "http://localhost:22813/api/v1/callback"
       ],
       "webOrigins": [
-        "http://212.2.234.213:22813"
+        "http://localhost:22813"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256"

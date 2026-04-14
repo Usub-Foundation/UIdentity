@@ -9,8 +9,7 @@
 namespace keycloak
 {
     static constexpr char kHex[] = "0123456789abcdef";
-    // TODO: Redis integration still needs a safe bridge from the coroutine client to this synchronous API.
-    RedisStateStore::RedisStateStore(usub::uredis::RedisClusterClient& redis, std::string key_prefix)
+    RedisStateStore::RedisStateStore(usub::uredis::RedisClusterClient &redis, std::string key_prefix)
         : redis_(redis), key_prefix_(std::move(key_prefix))
     {
         if (key_prefix_.empty())
@@ -37,7 +36,7 @@ namespace keycloak
 
     namespace
     {
-        std::runtime_error redis_failure(std::string_view operation, const usub::uredis::RedisError& error)
+        std::runtime_error redis_failure(std::string_view operation, const usub::uredis::RedisError &error)
         {
             return std::runtime_error(
                 std::string(operation) + " failed: " + error.message);

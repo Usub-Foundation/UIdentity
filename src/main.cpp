@@ -24,6 +24,7 @@
 #include "keycloak/keycloak_client.hpp"
 #include "keycloak/oauth/token_service.hpp"
 #include "keycloak/state_store/redis.hpp"
+#include "utils/cookies.hpp"
 
 namespace {
 
@@ -31,6 +32,7 @@ struct AppConfig {
     keycloak::KeycloakRealmConfig realm;
     keycloak::TokenServiceConfig token;
     AuthConfig auth;
+    handlers::AuthHandlerConfig handler;
 
     usub::uredis::RedisClusterConfig redis;
 
@@ -125,6 +127,15 @@ AppConfig load_config() {
     app.auth.expected_audience = getenv_or("UIDENTITY_AUTH_EXPECTED_AUDIENCE", "");
     app.auth.expected_azp = getenv_or("UIDENTITY_AUTH_EXPECTED_AZP", app.realm.client_id);
     app.auth.clock_skew_seconds = getenv_int("UIDENTITY_AUTH_CLOCK_SKEW_SECONDS", 60);
+    app.handler.token_cookies.access_token_name = getenv_or("UIDENTITY_COOKIE_ACCESS_TOKEN_NAME", "access_token");
+    app.handler.token_cookies.refresh_token_name = getenv_or("UIDENTITY_COOKIE_REFRESH_TOKEN_NAME", "refresh_token");
+    app.handler.token_cookies.path = getenv_or("UIDENTITY_COOKIE_PATH", "/");
+    app.handler.token_cookies.secure = getenv_bool("UIDENTITY_COOKIE_SECURE", true);
+    app.handler.token_cookies.same_site = getenv_or("UIDENTITY_COOKIE_SAMESITE", "Lax");
+    app.handler.post_login_redirect = getenv_or("UIDENTITY_POST_LOGIN_REDIRECT", "/");
+    app.handler.post_logout_redirect = getenv_or("UIDENTITY_POST_LOGOUT_REDIRECT", "/");
+    app.handler.revoke_refresh_token_on_logout =
+            getenv_bool("UIDENTITY_REVOKE_REFRESH_TOKEN_ON_LOGOUT", true);
 
     app.redis.seeds = {{
             .host = getenv_or("UIDENTITY_REDIS_HOST", "127.0.0.1"),
@@ -229,23 +240,80 @@ auto route(Handler &handler) {
     };
 }
 
-template<class Client>
-auto protected_route(Client &client) {
-    return [&client](usub::unet::http::Request &request,
-                     usub::unet::http::Response &response) -> usub::uvent::task::Awaitable<void> {
-        RequestContext context;
-        const auto auth_result = co_await client.authenticate_request(request, context);
+void clear_token_cookies(usub::unet::http::Response &response, const utils::TokenCookieConfig &cookie_cfg) {
+    const auto options = utils::token_cookie_options(cookie_cfg);
+    response.addHeader("Set-Cookie", utils::make_expired_cookie(cookie_cfg.access_token_name, options));
+    response.addHeader("Set-Cookie", utils::make_expired_cookie(cookie_cfg.refresh_token_name, options));
+}
 
+template<class Validator, class TokenService>
+auto protected_route(Validator &validator,
+                     TokenService &token_service,
+                     const utils::TokenCookieConfig &cookie_cfg) {
+    return [&validator, &token_service, cookie_cfg](usub::unet::http::Request &request,
+                                                    usub::unet::http::Response &response)
+            -> usub::uvent::task::Awaitable<void> {
+        RequestContext context;
         response.addHeader("Cache-Control", "no-store");
         response.addHeader("Pragma", "no-cache");
         response.addHeader("Content-Type", "application/json");
 
-        if (!auth_result.ok) {
-            response.setStatus(static_cast<std::uint16_t>(auth_result.http_status));
-            response.setBody(std::string{"{\"ok\":false,\"error\":\""} + json_escape(auth_result.error) + "\"}");
+        auto access_token = utils::get_cookie(request, cookie_cfg.access_token_name);
+        auto refresh_token = utils::get_cookie(request, cookie_cfg.refresh_token_name);
+
+        auto validation = access_token.has_value()
+                                  ? co_await validator.validate(*access_token)
+                                  : keycloak::JwtValidationResult{
+                                            .ok = false,
+                                            .http_status = 401,
+                                            .error = "missing_access_token_cookie",
+                                            .context = RequestContext{},
+                                    };
+
+        const bool should_refresh = refresh_token.has_value() &&
+                                    ((!access_token.has_value()) || validation.error == "jwt_expired");
+
+        if (!validation.ok && should_refresh) {
+            const auto refresh_result = co_await token_service.refresh_tokens(*refresh_token);
+            if (!refresh_result.ok) {
+                clear_token_cookies(response, cookie_cfg);
+                response.setStatus(static_cast<std::uint16_t>(refresh_result.http_status));
+                response.setBody(std::string{"{\"ok\":false,\"error\":\""} + json_escape(refresh_result.error) + "\"}");
+                co_return;
+            }
+
+            const std::string next_refresh_token = refresh_result.tokens.refresh_token.empty()
+                                                           ? *refresh_token
+                                                           : refresh_result.tokens.refresh_token;
+            response.addHeader("Set-Cookie",
+                               utils::make_set_cookie(
+                                       cookie_cfg.access_token_name,
+                                       refresh_result.tokens.access_token,
+                                       utils::token_cookie_options(cookie_cfg, refresh_result.tokens.expires_in)));
+            response.addHeader("Set-Cookie",
+                               utils::make_set_cookie(
+                                       cookie_cfg.refresh_token_name,
+                                       next_refresh_token,
+                                       utils::token_cookie_options(
+                                               cookie_cfg,
+                                               refresh_result.tokens.refresh_expires_in > 0
+                                                       ? refresh_result.tokens.refresh_expires_in
+                                                       : 0)));
+
+            validation = co_await validator.validate(refresh_result.tokens.access_token);
+        }
+
+        if (!validation.ok) {
+            if (validation.error == "jwt_expired") {
+                clear_token_cookies(response, cookie_cfg);
+            }
+            response.setStatus(static_cast<std::uint16_t>(validation.http_status));
+            response.setBody(std::string{"{\"ok\":false,\"error\":\""} + json_escape(validation.error) + "\"}");
             co_return;
         }
 
+        context = validation.context;
+        set_request_context(request, validation.context);
         response.setStatus(200);
         response.setBody(
                 "{\"ok\":true,"
@@ -316,17 +384,18 @@ int main() {
                              keycloak::BearerAuthMiddleware<keycloak::AccessTokenValidator<UnetHttpClient>>>
             client(app_cfg.realm, store, token_service, auth_middleware);
 
-    handlers::AuthHandler auth_handler{client};
+    handlers::AuthHandler auth_handler{client, token_service, app_cfg.handler};
     auto server_cfg = make_server_config(app_cfg);
     usub::unet::http::ServerRadix server{uvent, server_cfg};
 
     register_error_handlers(server);
 
-    server.handle("GET", "/auth/login", route<&handlers::AuthHandler<decltype(client)>::login>(auth_handler));
+    server.handle("GET", "/auth/login", route<&decltype(auth_handler)::login>(auth_handler));
     server.handle(std::set<std::string>{"GET", "POST"},
                   "/api/v1/callback",
-                  route<&handlers::AuthHandler<decltype(client)>::callback>(auth_handler));
-    server.handle("GET", "/api/v1/me", protected_route(client));
+                  route<&decltype(auth_handler)::callback>(auth_handler));
+    server.handle("GET", "/auth/logout", route<&decltype(auth_handler)::logout>(auth_handler));
+    server.handle("GET", "/api/v1/me", protected_route(validator, token_service, app_cfg.handler.token_cookies));
     server.handle("GET", app_cfg.health_path, health_route());
     server.handle("GET", app_cfg.ready_path, readiness_route(redis_ready));
 
@@ -335,6 +404,7 @@ int main() {
     std::cout << "configured callback server on http://" << app_cfg.listen_host << ":" << app_cfg.listen_port << "\n";
     std::cout << "login endpoint:    GET  /auth/login\n";
     std::cout << "callback endpoint: GET|POST /api/v1/callback\n";
+    std::cout << "logout endpoint:   GET  /auth/logout\n";
     std::cout << "protected route:   GET  /api/v1/me\n";
     std::cout << "live endpoint:     GET  " << app_cfg.health_path << "\n";
     std::cout << "ready endpoint:    GET  " << app_cfg.ready_path << "\n";
