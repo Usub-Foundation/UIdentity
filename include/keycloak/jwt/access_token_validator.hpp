@@ -141,6 +141,7 @@ namespace keycloak
             context.sub = detail::extract_json_string(jwt->payload_json, "sub").value_or("");
             context.preferred_username = detail::extract_json_string(jwt->payload_json, "preferred_username").value_or("");
             context.issuer = detail::extract_json_string(jwt->payload_json, "iss").value_or("");
+            context.realm = context.issuer.empty() ? "" : detail::last_path_segment(context.issuer);
             context.client_id = detail::extract_json_string(jwt->payload_json, "azp")
                                     .value_or(detail::extract_json_string(jwt->payload_json, "client_id").value_or(""));
             context.roles = detail::extract_all_roles(jwt->payload_json);

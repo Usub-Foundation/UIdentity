@@ -75,6 +75,17 @@ namespace keycloak::detail
         return realm_root(base_url, realm) + "/.well-known/openid-configuration";
     }
 
+    inline std::string last_path_segment(std::string_view value)
+    {
+        while (!value.empty() && value.back() == '/')
+        {
+            value.remove_suffix(1);
+        }
+
+        const auto slash = value.rfind('/');
+        return slash == std::string_view::npos ? std::string(value) : std::string(value.substr(slash + 1));
+    }
+
     inline usub::unet::uri::URI parse_absolute_uri(std::string_view url)
     {
         usub::unet::uri::URI uri;

@@ -29,9 +29,26 @@ public:
         : client_(client), token_service_(token_service), config_(std::move(config)) {}
 
     ServerHandler login(usub::unet::http::Request &request, usub::unet::http::Response &response) {
-        (void) request;
+        const auto params = parse_form_encoded(request.metadata.uri.query);
+        const auto realm_it = params.find("realm");
+        if (realm_it == params.end() || realm_it->second.empty()) {
+            response.setStatus(400);
+            response.addHeader("Content-Type", "application/json");
+            response.addHeader("Cache-Control", "no-store");
+            response.addHeader("Pragma", "no-cache");
+            response.setBody(R"({"ok":false,"error":"missing_realm"})");
+            co_return;
+        }
+        if (!client_.has_realm(realm_it->second)) {
+            response.setStatus(404);
+            response.addHeader("Content-Type", "application/json");
+            response.addHeader("Cache-Control", "no-store");
+            response.addHeader("Pragma", "no-cache");
+            response.setBody(R"({"ok":false,"error":"unknown_realm"})");
+            co_return;
+        }
 
-        const auto auth_start = co_await this->client_.start_login(std::chrono::minutes(5));
+        const auto auth_start = co_await this->client_.start_login(realm_it->second, std::chrono::minutes(5));
 
         response.setStatus(302);
         response.addHeader("Location", auth_start.authorization_url);
@@ -68,7 +85,7 @@ public:
             co_return;
         }
 
-        add_token_cookies(response, result.tokens);
+        add_token_cookies(response, result.realm, result.tokens);
         response.setStatus(302);
         response.addHeader("Location", config_.post_login_redirect);
         response.setBody("");
@@ -76,17 +93,34 @@ public:
     }
 
     ServerHandler logout(usub::unet::http::Request &request, usub::unet::http::Response &response) {
+        const auto params = parse_form_encoded(request.metadata.uri.query);
+        const auto realm_it = params.find("realm");
+
         response.addHeader("Cache-Control", "no-store");
         response.addHeader("Pragma", "no-cache");
 
+        if (realm_it == params.end() || realm_it->second.empty()) {
+            response.addHeader("Content-Type", "application/json");
+            response.setStatus(400);
+            response.setBody(R"({"ok":false,"error":"missing_realm"})");
+            co_return;
+        }
+        if (!token_service_.has_realm(realm_it->second)) {
+            response.addHeader("Content-Type", "application/json");
+            response.setStatus(404);
+            response.setBody(R"({"ok":false,"error":"unknown_realm"})");
+            co_return;
+        }
+
+        const auto cookie_cfg = token_cookie_config_for_realm(realm_it->second);
         if (config_.revoke_refresh_token_on_logout) {
-            if (const auto refresh_token = utils::get_cookie(request, config_.token_cookies.refresh_token_name);
+            if (const auto refresh_token = utils::get_cookie(request, cookie_cfg.refresh_token_name);
                 refresh_token.has_value() && !refresh_token->empty()) {
-                (void) co_await token_service_.revoke_token(*refresh_token);
+                (void) co_await token_service_.revoke_token(realm_it->second, *refresh_token, "refresh_token");
             }
         }
 
-        clear_token_cookies(response);
+        clear_token_cookies(response, realm_it->second);
         response.setStatus(302);
         response.addHeader("Location", config_.post_logout_redirect);
         response.setBody("");
@@ -94,25 +128,36 @@ public:
     }
 
 private:
-    void add_token_cookies(usub::unet::http::Response &response, const keycloak::TokenSet &tokens) const {
+    void add_token_cookies(usub::unet::http::Response &response,
+                           std::string_view realm,
+                           const keycloak::TokenSet &tokens) const {
+        const auto cookie_cfg = token_cookie_config_for_realm(realm);
         response.addHeader("Set-Cookie",
                            utils::make_set_cookie(
-                                   config_.token_cookies.access_token_name,
+                                   cookie_cfg.access_token_name,
                                    tokens.access_token,
-                                   utils::token_cookie_options(config_.token_cookies, tokens.expires_in)));
+                                   utils::token_cookie_options(cookie_cfg, tokens.expires_in)));
         response.addHeader("Set-Cookie",
                            utils::make_set_cookie(
-                                   config_.token_cookies.refresh_token_name,
+                                   cookie_cfg.refresh_token_name,
                                    tokens.refresh_token,
-                                   utils::token_cookie_options(config_.token_cookies, tokens.refresh_expires_in)));
+                                   utils::token_cookie_options(cookie_cfg, tokens.refresh_expires_in)));
     }
 
-    void clear_token_cookies(usub::unet::http::Response &response) const {
-        const auto cookie_options = utils::token_cookie_options(config_.token_cookies);
+    void clear_token_cookies(usub::unet::http::Response &response, std::string_view realm) const {
+        const auto cookie_cfg = token_cookie_config_for_realm(realm);
+        const auto cookie_options = utils::token_cookie_options(cookie_cfg);
         response.addHeader("Set-Cookie",
-                           utils::make_expired_cookie(config_.token_cookies.access_token_name, cookie_options));
+                           utils::make_expired_cookie(cookie_cfg.access_token_name, cookie_options));
         response.addHeader("Set-Cookie",
-                           utils::make_expired_cookie(config_.token_cookies.refresh_token_name, cookie_options));
+                           utils::make_expired_cookie(cookie_cfg.refresh_token_name, cookie_options));
+    }
+
+    utils::TokenCookieConfig token_cookie_config_for_realm(std::string_view realm) const {
+        auto cookie_cfg = config_.token_cookies;
+        cookie_cfg.access_token_name += "_" + std::string(realm);
+        cookie_cfg.refresh_token_name += "_" + std::string(realm);
+        return cookie_cfg;
     }
 
     static std::string decode_form_component(std::string_view value) {

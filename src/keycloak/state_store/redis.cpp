@@ -2,9 +2,12 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <random>
 #include <stdexcept>
 #include <utility>
+
+#include "utils/url_encode.hpp"
 
 namespace keycloak
 {
@@ -47,8 +50,71 @@ namespace keycloak
         std::string_view code_verifier,
         std::chrono::seconds ttl)
     {
+        co_return co_await create_state_entry(StateEntry{
+                .code_verifier = std::string(code_verifier),
+                .realm = "",
+        },
+                                              ttl);
+    }
+
+    namespace
+    {
+        std::string encode_state_entry(const StateEntry &entry)
+        {
+            return "verifier=" + url_encode(entry.code_verifier) + "&realm=" + url_encode(entry.realm);
+        }
+
+        std::optional<StateEntry> decode_state_entry(std::string_view raw)
+        {
+            StateEntry entry;
+            std::size_t start = 0;
+
+            while (start <= raw.size())
+            {
+                const std::size_t end = raw.find('&', start);
+                const std::string_view part =
+                    raw.substr(start, end == std::string_view::npos ? raw.size() - start : end - start);
+
+                if (!part.empty())
+                {
+                    const std::size_t eq = part.find('=');
+                    const std::string key = url_decode(part.substr(0, eq));
+                    const std::string value =
+                        eq == std::string_view::npos ? std::string{} : url_decode(part.substr(eq + 1));
+
+                    if (key == "verifier")
+                    {
+                        entry.code_verifier = value;
+                    }
+                    else if (key == "realm")
+                    {
+                        entry.realm = value;
+                    }
+                }
+
+                if (end == std::string_view::npos)
+                {
+                    break;
+                }
+                start = end + 1;
+            }
+
+            if (entry.code_verifier.empty())
+            {
+                return std::nullopt;
+            }
+
+            return entry;
+        }
+    }
+
+    usub::uvent::task::Awaitable<std::string> RedisStateStore::create_state_entry(
+        const StateEntry &entry,
+        std::chrono::seconds ttl)
+    {
         const int ttl_seconds = static_cast<int>(std::max<std::int64_t>(1, ttl.count()));
         const std::string ttl_text = std::to_string(ttl_seconds);
+        const std::string value = encode_state_entry(entry);
 
         for (int attempt = 0; attempt < 8; ++attempt)
         {
@@ -57,7 +123,7 @@ namespace keycloak
 
             auto response = co_await redis_.command("SET",
                                                     key,
-                                                    code_verifier,
+                                                    value,
                                                     "EX",
                                                     ttl_text,
                                                     "NX");
@@ -86,6 +152,18 @@ namespace keycloak
     usub::uvent::task::Awaitable<std::optional<std::string>> RedisStateStore::consume_state(
         std::string_view state)
     {
+        const auto entry = co_await consume_state_entry(state);
+        if (!entry.has_value())
+        {
+            co_return std::nullopt;
+        }
+
+        co_return entry->code_verifier;
+    }
+
+    usub::uvent::task::Awaitable<std::optional<StateEntry>> RedisStateStore::consume_state_entry(
+        std::string_view state)
+    {
         const std::string key = make_key(state);
         auto response = co_await redis_.command("GETDEL", key);
         if (!response)
@@ -103,7 +181,17 @@ namespace keycloak
             throw std::runtime_error("RedisStateStore::consume_state failed: unexpected Redis reply");
         }
 
-        co_return response->as_string();
+        const auto raw = response->as_string();
+        if (const auto entry = decode_state_entry(raw))
+        {
+            co_return entry;
+        }
+
+        // Backward-compatible fallback for any states written before the realm metadata existed.
+        co_return StateEntry{
+            .code_verifier = raw,
+            .realm = "",
+        };
     }
 
 } // namespace keycloak

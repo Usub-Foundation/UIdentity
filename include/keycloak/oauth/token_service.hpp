@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -33,6 +34,11 @@ namespace keycloak
         TokenService(TokenServiceConfig cfg, HttpClient &http_client)
             : cfg_(std::move(cfg)), http_client_(http_client)
         {
+        }
+
+        bool has_realm(std::string_view realm) const
+        {
+            return realm == cfg_.realm;
         }
 
         usub::uvent::task::Awaitable<OAuthResult> exchange_authorization_code(std::string_view code,
@@ -102,6 +108,16 @@ namespace keycloak
             co_return parse_token_response(response, "token_refresh_failed");
         }
 
+        usub::uvent::task::Awaitable<OAuthResult> refresh_tokens(std::string_view realm,
+                                                                 std::string_view refresh_token)
+        {
+            if (!has_realm(realm))
+            {
+                throw std::invalid_argument("unknown realm");
+            }
+            co_return co_await refresh_tokens(refresh_token);
+        }
+
         usub::uvent::task::Awaitable<OAuthResult> revoke_token(std::string_view token,
                                                                std::string_view token_type_hint = "refresh_token")
         {
@@ -148,6 +164,17 @@ namespace keycloak
                 .http_status = http_status,
                 .error = compose_error_message(response, "token_revoke_failed"),
             };
+        }
+
+        usub::uvent::task::Awaitable<OAuthResult> revoke_token(std::string_view realm,
+                                                               std::string_view token,
+                                                               std::string_view token_type_hint)
+        {
+            if (!has_realm(realm))
+            {
+                throw std::invalid_argument("unknown realm");
+            }
+            co_return co_await revoke_token(token, token_type_hint);
         }
 
         usub::uvent::task::Awaitable<OAuthResult> introspect_token(std::string_view token)

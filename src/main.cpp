@@ -7,6 +7,9 @@
 #include <cstdlib>
 #include <chrono>
 #include <atomic>
+#include <cctype>
+#include <algorithm>
+#include <unordered_map>
 #include <vector>
 
 #include <uvent/Uvent.h>
@@ -22,16 +25,21 @@
 #include "keycloak/config.hpp"
 #include "keycloak/detail/oidc_utils.hpp"
 #include "keycloak/keycloak_client.hpp"
+#include "keycloak/multi_realm.hpp"
 #include "keycloak/oauth/token_service.hpp"
 #include "keycloak/state_store/redis.hpp"
 #include "utils/cookies.hpp"
 
 namespace {
 
-struct AppConfig {
+struct RealmConfig {
     keycloak::KeycloakRealmConfig realm;
     keycloak::TokenServiceConfig token;
     AuthConfig auth;
+};
+
+struct AppConfig {
+    std::vector<RealmConfig> realms;
     handlers::AuthHandlerConfig handler;
 
     usub::uredis::RedisClusterConfig redis;
@@ -86,6 +94,43 @@ std::vector<std::string> split_ws(std::string raw) {
     return keycloak::detail::split_ws(raw);
 }
 
+std::vector<std::string> split_list(std::string raw) {
+    for (char &ch: raw) {
+        if (ch == ',') {
+            ch = ' ';
+        }
+    }
+    return split_ws(std::move(raw));
+}
+
+std::string realm_env_suffix(std::string_view realm) {
+    std::string suffix;
+    suffix.reserve(realm.size());
+    for (const unsigned char ch: realm) {
+        if (std::isalnum(ch)) {
+            suffix.push_back(static_cast<char>(std::toupper(ch)));
+        } else {
+            suffix.push_back('_');
+        }
+    }
+    return suffix;
+}
+
+std::optional<std::string> getenv_realm_string(std::string_view realm, std::string_view name) {
+    const std::string suffixed_name = std::string(name) + "_" + realm_env_suffix(realm);
+    if (auto value = getenv_string(suffixed_name.c_str())) {
+        return value;
+    }
+    return getenv_string(std::string(name).c_str());
+}
+
+std::string getenv_realm_or(std::string_view realm, std::string_view name, std::string fallback) {
+    if (auto value = getenv_realm_string(realm, name)) {
+        return *value;
+    }
+    return fallback;
+}
+
 AppConfig load_config() {
     AppConfig app{};
 
@@ -100,33 +145,58 @@ AppConfig load_config() {
             "UIDENTITY_KEYCLOAK_INTERNAL_BASE_URL",
             public_keycloak_base_url);
 
-    app.realm.base_url = public_keycloak_base_url;
-    app.realm.realm = getenv_or("UIDENTITY_KEYCLOAK_REALM", "trader");
-    app.realm.client_id = getenv_or("UIDENTITY_KEYCLOAK_CLIENT_ID", "myclient");
-    app.realm.redirect_uri = getenv_or(
+    auto realms = split_list(getenv_or("UIDENTITY_KEYCLOAK_REALMS", ""));
+    if (realms.empty()) {
+        realms.push_back(getenv_or("UIDENTITY_KEYCLOAK_REALM", "trader"));
+    }
+
+    const std::string default_redirect_uri = getenv_or(
             "UIDENTITY_KEYCLOAK_REDIRECT_URI",
             "http://" + app.listen_host + ":" + std::to_string(app.listen_port) + "/api/v1/callback");
-    app.realm.scopes = split_ws(getenv_or("UIDENTITY_KEYCLOAK_SCOPES", "openid profile email"));
+    const auto default_scopes = split_ws(getenv_or("UIDENTITY_KEYCLOAK_SCOPES", "openid profile email"));
+    const auto jwks_cache_ttl = std::chrono::seconds{std::max(1, getenv_int("UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS", 300))};
+    const bool require_audience = getenv_bool("UIDENTITY_AUTH_REQUIRE_AUDIENCE", false);
+    const std::string default_audience = getenv_or("UIDENTITY_AUTH_EXPECTED_AUDIENCE", "");
+    const int clock_skew_seconds = getenv_int("UIDENTITY_AUTH_CLOCK_SKEW_SECONDS", 60);
 
-    app.token = {
-            .base_url = internal_keycloak_base_url,
-            .realm = app.realm.realm,
-            .client_id = app.realm.client_id,
-            .client_secret = getenv_string("UIDENTITY_KEYCLOAK_CLIENT_SECRET"),
-            .redirect_uri = app.realm.redirect_uri,
-    };
+    for (const auto &realm_name: realms) {
+        RealmConfig realm_cfg{};
+        realm_cfg.realm.base_url = public_keycloak_base_url;
+        realm_cfg.realm.realm = realm_name;
+        realm_cfg.realm.client_id = getenv_realm_or(realm_name, "UIDENTITY_KEYCLOAK_CLIENT_ID", "myclient");
+        realm_cfg.realm.redirect_uri = getenv_realm_or(realm_name, "UIDENTITY_KEYCLOAK_REDIRECT_URI", default_redirect_uri);
+        realm_cfg.realm.scopes = default_scopes;
 
-    app.auth.expected_issuer = getenv_or(
-            "UIDENTITY_AUTH_EXPECTED_ISSUER",
-            keycloak::detail::realm_root(public_keycloak_base_url, app.realm.realm));
-    app.auth.jwks_url = getenv_or(
-            "UIDENTITY_AUTH_JWKS_URL",
-            keycloak::detail::jwks_endpoint(internal_keycloak_base_url, app.realm.realm));
-    app.auth.jwks_cache_ttl = std::chrono::seconds{std::max(1, getenv_int("UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS", 300))};
-    app.auth.require_audience = getenv_bool("UIDENTITY_AUTH_REQUIRE_AUDIENCE", false);
-    app.auth.expected_audience = getenv_or("UIDENTITY_AUTH_EXPECTED_AUDIENCE", "");
-    app.auth.expected_azp = getenv_or("UIDENTITY_AUTH_EXPECTED_AZP", app.realm.client_id);
-    app.auth.clock_skew_seconds = getenv_int("UIDENTITY_AUTH_CLOCK_SKEW_SECONDS", 60);
+        realm_cfg.token = {
+                .base_url = internal_keycloak_base_url,
+                .realm = realm_name,
+                .client_id = realm_cfg.realm.client_id,
+                .client_secret = getenv_realm_string(realm_name, "UIDENTITY_KEYCLOAK_CLIENT_SECRET"),
+                .redirect_uri = realm_cfg.realm.redirect_uri,
+        };
+
+        realm_cfg.auth.expected_issuer = getenv_realm_or(
+                realm_name,
+                "UIDENTITY_AUTH_EXPECTED_ISSUER",
+                keycloak::detail::realm_root(public_keycloak_base_url, realm_name));
+        realm_cfg.auth.jwks_url = getenv_realm_or(
+                realm_name,
+                "UIDENTITY_AUTH_JWKS_URL",
+                keycloak::detail::jwks_endpoint(internal_keycloak_base_url, realm_name));
+        realm_cfg.auth.jwks_cache_ttl = jwks_cache_ttl;
+        realm_cfg.auth.require_audience = require_audience;
+        realm_cfg.auth.expected_audience = getenv_realm_or(
+                realm_name,
+                "UIDENTITY_AUTH_EXPECTED_AUDIENCE",
+                default_audience);
+        realm_cfg.auth.expected_azp = getenv_realm_or(
+                realm_name,
+                "UIDENTITY_AUTH_EXPECTED_AZP",
+                realm_cfg.realm.client_id);
+        realm_cfg.auth.clock_skew_seconds = clock_skew_seconds;
+        app.realms.push_back(std::move(realm_cfg));
+    }
+
     app.handler.token_cookies.access_token_name = getenv_or("UIDENTITY_COOKIE_ACCESS_TOKEN_NAME", "access_token");
     app.handler.token_cookies.refresh_token_name = getenv_or("UIDENTITY_COOKIE_REFRESH_TOKEN_NAME", "refresh_token");
     app.handler.token_cookies.path = getenv_or("UIDENTITY_COOKIE_PATH", "/");
@@ -246,23 +316,68 @@ void clear_token_cookies(usub::unet::http::Response &response, const utils::Toke
     response.addHeader("Set-Cookie", utils::make_expired_cookie(cookie_cfg.refresh_token_name, options));
 }
 
-template<class Validator, class TokenService>
-auto protected_route(Validator &validator,
-                     TokenService &token_service,
+std::unordered_map<std::string, std::string> parse_query_params(std::string_view raw) {
+    std::unordered_map<std::string, std::string> params;
+    std::size_t start = 0;
+
+    while (start <= raw.size()) {
+        const std::size_t end = raw.find('&', start);
+        const std::string_view part =
+                raw.substr(start, end == std::string_view::npos ? raw.size() - start : end - start);
+
+        if (!part.empty()) {
+            const std::size_t eq = part.find('=');
+            const std::string key = url_decode(part.substr(0, eq));
+            const std::string value = eq == std::string_view::npos ? std::string{} : url_decode(part.substr(eq + 1));
+            params.insert_or_assign(key, value);
+        }
+
+        if (end == std::string_view::npos) {
+            break;
+        }
+        start = end + 1;
+    }
+
+    return params;
+}
+
+utils::TokenCookieConfig cookie_config_for_realm(const utils::TokenCookieConfig &cookie_cfg, std::string_view realm) {
+    auto scoped = cookie_cfg;
+    scoped.access_token_name += "_" + std::string(realm);
+    scoped.refresh_token_name += "_" + std::string(realm);
+    return scoped;
+}
+
+template<class RealmManager>
+auto protected_route(RealmManager &realm_manager,
                      const utils::TokenCookieConfig &cookie_cfg) {
-    return [&validator, &token_service, cookie_cfg](usub::unet::http::Request &request,
-                                                    usub::unet::http::Response &response)
+    return [&realm_manager, cookie_cfg](usub::unet::http::Request &request,
+                                        usub::unet::http::Response &response)
             -> usub::uvent::task::Awaitable<void> {
         RequestContext context;
         response.addHeader("Cache-Control", "no-store");
         response.addHeader("Pragma", "no-cache");
         response.addHeader("Content-Type", "application/json");
 
-        auto access_token = utils::get_cookie(request, cookie_cfg.access_token_name);
-        auto refresh_token = utils::get_cookie(request, cookie_cfg.refresh_token_name);
+        const auto params = parse_query_params(request.metadata.uri.query);
+        const auto realm_it = params.find("realm");
+        if (realm_it == params.end() || realm_it->second.empty()) {
+            response.setStatus(400);
+            response.setBody(R"({"ok":false,"error":"missing_realm"})");
+            co_return;
+        }
+        if (!realm_manager.has_realm(realm_it->second)) {
+            response.setStatus(404);
+            response.setBody(R"({"ok":false,"error":"unknown_realm"})");
+            co_return;
+        }
+
+        const auto scoped_cookie_cfg = cookie_config_for_realm(cookie_cfg, realm_it->second);
+        auto access_token = utils::get_cookie(request, scoped_cookie_cfg.access_token_name);
+        auto refresh_token = utils::get_cookie(request, scoped_cookie_cfg.refresh_token_name);
 
         auto validation = access_token.has_value()
-                                  ? co_await validator.validate(*access_token)
+                                  ? co_await realm_manager.validate(realm_it->second, *access_token)
                                   : keycloak::JwtValidationResult{
                                             .ok = false,
                                             .http_status = 401,
@@ -274,9 +389,9 @@ auto protected_route(Validator &validator,
                                     ((!access_token.has_value()) || validation.error == "jwt_expired");
 
         if (!validation.ok && should_refresh) {
-            const auto refresh_result = co_await token_service.refresh_tokens(*refresh_token);
+            const auto refresh_result = co_await realm_manager.refresh_tokens(realm_it->second, *refresh_token);
             if (!refresh_result.ok) {
-                clear_token_cookies(response, cookie_cfg);
+                clear_token_cookies(response, scoped_cookie_cfg);
                 response.setStatus(static_cast<std::uint16_t>(refresh_result.http_status));
                 response.setBody(std::string{"{\"ok\":false,\"error\":\""} + json_escape(refresh_result.error) + "\"}");
                 co_return;
@@ -287,25 +402,25 @@ auto protected_route(Validator &validator,
                                                            : refresh_result.tokens.refresh_token;
             response.addHeader("Set-Cookie",
                                utils::make_set_cookie(
-                                       cookie_cfg.access_token_name,
+                                       scoped_cookie_cfg.access_token_name,
                                        refresh_result.tokens.access_token,
-                                       utils::token_cookie_options(cookie_cfg, refresh_result.tokens.expires_in)));
+                                       utils::token_cookie_options(scoped_cookie_cfg, refresh_result.tokens.expires_in)));
             response.addHeader("Set-Cookie",
                                utils::make_set_cookie(
-                                       cookie_cfg.refresh_token_name,
+                                       scoped_cookie_cfg.refresh_token_name,
                                        next_refresh_token,
                                        utils::token_cookie_options(
-                                               cookie_cfg,
+                                               scoped_cookie_cfg,
                                                refresh_result.tokens.refresh_expires_in > 0
                                                        ? refresh_result.tokens.refresh_expires_in
                                                        : 0)));
 
-            validation = co_await validator.validate(refresh_result.tokens.access_token);
+            validation = co_await realm_manager.validate(realm_it->second, refresh_result.tokens.access_token);
         }
 
         if (!validation.ok) {
             if (validation.error == "jwt_expired") {
-                clear_token_cookies(response, cookie_cfg);
+                clear_token_cookies(response, scoped_cookie_cfg);
             }
             response.setStatus(static_cast<std::uint16_t>(validation.http_status));
             response.setBody(std::string{"{\"ok\":false,\"error\":\""} + json_escape(validation.error) + "\"}");
@@ -319,6 +434,7 @@ auto protected_route(Validator &validator,
                 "{\"ok\":true,"
                 "\"sub\":\"" + json_escape(context.sub) + "\","
                 "\"preferred_username\":\"" + json_escape(context.preferred_username) + "\","
+                "\"realm\":\"" + json_escape(context.realm) + "\","
                 "\"issuer\":\"" + json_escape(context.issuer) + "\","
                 "\"client_id\":\"" + json_escape(context.client_id) + "\"}");
         co_return;
@@ -376,15 +492,21 @@ int main() {
     usub::uredis::RedisClusterClient redis_client{app_cfg.redis};
     keycloak::RedisStateStore store(redis_client);
     UnetHttpClient http_client;
-    keycloak::TokenService<UnetHttpClient> token_service(app_cfg.token, http_client);
-    keycloak::AccessTokenValidator<UnetHttpClient> validator(app_cfg.auth, http_client);
-    keycloak::BearerAuthMiddleware<keycloak::AccessTokenValidator<UnetHttpClient>> auth_middleware(validator);
-    keycloak::KeycloakClient<keycloak::RedisStateStore,
-                             keycloak::TokenService<UnetHttpClient>,
-                             keycloak::BearerAuthMiddleware<keycloak::AccessTokenValidator<UnetHttpClient>>>
-            client(app_cfg.realm, store, token_service, auth_middleware);
+    std::vector<keycloak::MultiRealmConfig> realms;
+    realms.reserve(app_cfg.realms.size());
+    for (const auto &realm_cfg: app_cfg.realms) {
+        realms.push_back(keycloak::MultiRealmConfig{
+                .realm = realm_cfg.realm,
+                .token = realm_cfg.token,
+                .auth = realm_cfg.auth,
+        });
+    }
+    keycloak::MultiRealmManager<keycloak::RedisStateStore, UnetHttpClient> realm_manager(
+            std::move(realms),
+            store,
+            http_client);
 
-    handlers::AuthHandler auth_handler{client, token_service, app_cfg.handler};
+    handlers::AuthHandler auth_handler{realm_manager, realm_manager, app_cfg.handler};
     auto server_cfg = make_server_config(app_cfg);
     usub::unet::http::ServerRadix server{uvent, server_cfg};
 
@@ -395,17 +517,25 @@ int main() {
                   "/api/v1/callback",
                   route<&decltype(auth_handler)::callback>(auth_handler));
     server.handle("GET", "/auth/logout", route<&decltype(auth_handler)::logout>(auth_handler));
-    server.handle("GET", "/api/v1/me", protected_route(validator, token_service, app_cfg.handler.token_cookies));
+    server.handle("GET", "/api/v1/me", protected_route(realm_manager, app_cfg.handler.token_cookies));
     server.handle("GET", app_cfg.health_path, health_route());
     server.handle("GET", app_cfg.ready_path, readiness_route(redis_ready));
 
     usub::uvent::system::co_spawn(bootstrap_redis(uvent, redis_client, redis_ready));
 
     std::cout << "configured callback server on http://" << app_cfg.listen_host << ":" << app_cfg.listen_port << "\n";
-    std::cout << "login endpoint:    GET  /auth/login\n";
+    std::cout << "configured realms: ";
+    for (std::size_t i = 0; i < app_cfg.realms.size(); ++i) {
+        if (i > 0) {
+            std::cout << ", ";
+        }
+        std::cout << app_cfg.realms[i].realm.realm;
+    }
+    std::cout << "\n";
+    std::cout << "login endpoint:    GET  /auth/login?realm=<realm>\n";
     std::cout << "callback endpoint: GET|POST /api/v1/callback\n";
-    std::cout << "logout endpoint:   GET  /auth/logout\n";
-    std::cout << "protected route:   GET  /api/v1/me\n";
+    std::cout << "logout endpoint:   GET  /auth/logout?realm=<realm>\n";
+    std::cout << "protected route:   GET  /api/v1/me?realm=<realm>\n";
     std::cout << "live endpoint:     GET  " << app_cfg.health_path << "\n";
     std::cout << "ready endpoint:    GET  " << app_cfg.ready_path << "\n";
 

@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <concepts>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -29,6 +30,7 @@ namespace keycloak
         int http_status = 500;
         std::string error;
         TokenSet tokens;
+        std::string realm;
     };
 
     template <class T>
@@ -67,6 +69,21 @@ namespace keycloak
             co_return auth_strategy_.create_authorization_url(std::move(state), pkce);
         }
 
+        bool has_realm(std::string_view realm) const
+        {
+            return realm == cfg_.realm;
+        }
+
+        usub::uvent::task::Awaitable<AuthStart> start_login(std::string_view realm,
+                                                            std::chrono::seconds ttl)
+        {
+            if (!has_realm(realm))
+            {
+                throw std::invalid_argument("unknown realm");
+            }
+            co_return co_await start_login(ttl);
+        }
+
         usub::uvent::task::Awaitable<CallbackResult> complete_login(const CallbackInput &input)
         {
             if (input.code.empty() || input.state.empty())
@@ -94,6 +111,7 @@ namespace keycloak
                 .http_status = oauth_result.http_status,
                 .error = oauth_result.error,
                 .tokens = oauth_result.tokens,
+                .realm = cfg_.realm,
             };
         }
 

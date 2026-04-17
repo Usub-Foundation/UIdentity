@@ -12,6 +12,7 @@ struct RequestContext
     bool authenticated = false;
     std::string sub;
     std::string preferred_username;
+    std::string realm;
     std::string issuer;
     std::string client_id;
     std::vector<std::string> roles;

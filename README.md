@@ -39,9 +39,12 @@ Copy [.env.example](/home/dev_elseif/UIdentity/.env.example) into your own envir
 
 Important variables:
 
+- `UIDENTITY_KEYCLOAK_REALMS`: whitespace- or comma-separated list of supported realms, for example `trader merchant`
 - `UIDENTITY_KEYCLOAK_AUTH_BASE_URL`: the browser-facing Keycloak URL used in generated login redirects
 - `UIDENTITY_KEYCLOAK_INTERNAL_BASE_URL`: the URL the app itself uses to call Keycloak token/JWKS endpoints
 - `UIDENTITY_KEYCLOAK_REDIRECT_URI`: the callback URL registered with Keycloak
+- `UIDENTITY_KEYCLOAK_CLIENT_ID_<REALM>`: per-realm client ids, such as `UIDENTITY_KEYCLOAK_CLIENT_ID_TRADER`
+- `UIDENTITY_AUTH_EXPECTED_AZP_<REALM>`: optional per-realm AZP validation overrides
 - `UIDENTITY_REDIS_HOST` / `UIDENTITY_REDIS_PORT`: Redis connection settings
 - `UIDENTITY_LISTEN_HOST` / `UIDENTITY_LISTEN_PORT`: app bind address
 - `UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS`: JWKS cache lifetime
@@ -71,22 +74,23 @@ Health endpoints:
 Bundled demo credentials:
 
 - Keycloak admin: `admin` / `adminadmin`
-- Demo user: `alice` / `alice123`
+- `trader` realm user: `alice` / `alice123`
+- `merchant` realm user: `mona` / `mona123`
 
 Demo flow:
 
-1. Open `http://localhost:22813/auth/login`
-2. Sign in as `alice`
-3. Keycloak redirects back to the callback, which stores the access and refresh tokens in `HttpOnly` cookies
-4. Open `http://localhost:22813/api/v1/me` in the same browser session
-5. Optionally call `GET http://localhost:22813/auth/logout` to clear cookies and revoke the refresh token
+1. Open `http://localhost:22813/auth/login?realm=trader` or `http://localhost:22813/auth/login?realm=merchant`
+2. Sign in with a user from that realm
+3. Keycloak redirects back to the callback, which stores the access and refresh tokens in realm-scoped `HttpOnly` cookies such as `access_token_trader`
+4. Open `http://localhost:22813/api/v1/me?realm=trader` or `http://localhost:22813/api/v1/me?realm=merchant` in the same browser session
+5. Optionally call `GET http://localhost:22813/auth/logout?realm=trader` or `...realm=merchant` to clear that realm's cookies and revoke its refresh token
 
 Example:
 
 ```bash
 curl -i \
-  --cookie "access_token=<access_token>; refresh_token=<refresh_token>" \
-  http://localhost:22813/api/v1/me
+  --cookie "access_token_trader=<access_token>; refresh_token_trader=<refresh_token>" \
+  "http://localhost:22813/api/v1/me?realm=trader"
 ```
 
 ## Tests

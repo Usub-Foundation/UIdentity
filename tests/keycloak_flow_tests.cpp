@@ -69,10 +69,15 @@ namespace
     {
         keycloak::CallbackResult callback_result{};
 
-        usub::uvent::task::Awaitable<keycloak::AuthStart> start_login(std::chrono::seconds)
+        bool has_realm(std::string_view realm) const
+        {
+            return realm == "trader";
+        }
+
+        usub::uvent::task::Awaitable<keycloak::AuthStart> start_login(std::string_view realm, std::chrono::seconds)
         {
             co_return keycloak::AuthStart{
-                .authorization_url = "https://issuer.example/auth?state=state-1",
+                .authorization_url = "https://issuer.example/auth?realm=" + std::string(realm) + "&state=state-1",
                 .state = "state-1",
             };
         }
@@ -86,10 +91,18 @@ namespace
     struct FakeHandlerTokenService
     {
         std::vector<std::string> revoked_tokens;
+        std::vector<std::string> revoked_realms;
 
-        usub::uvent::task::Awaitable<keycloak::OAuthResult> revoke_token(std::string_view token,
+        bool has_realm(std::string_view realm) const
+        {
+            return realm == "trader";
+        }
+
+        usub::uvent::task::Awaitable<keycloak::OAuthResult> revoke_token(std::string_view realm,
+                                                                         std::string_view token,
                                                                          std::string_view = "refresh_token")
         {
+            revoked_realms.emplace_back(realm);
             revoked_tokens.emplace_back(token);
             co_return keycloak::OAuthResult{
                 .ok = true,
@@ -554,6 +567,7 @@ namespace
                     .expires_in = 300,
                     .refresh_expires_in = 3600,
                 },
+                .realm = "trader",
             },
         };
         FakeHandlerTokenService token_service;
@@ -563,6 +577,19 @@ namespace
         config.post_logout_redirect = "/signed-out";
 
         handlers::AuthHandler handler(client, token_service, config);
+
+        usub::unet::http::Request login_request{
+            .metadata = {
+                .method_token = "GET",
+                .uri = {.path = "/auth/login", .query = "realm=trader"},
+            },
+        };
+        usub::unet::http::Response login_response;
+        co_await handler.login(login_request, login_response);
+
+        require(login_response.metadata.status_code == 302, "login should redirect");
+        require(login_response.headers.value("Location").value_or("").find("realm=trader") != std::string::npos,
+                "login should include selected realm");
 
         usub::unet::http::Request callback_request{
             .metadata = {
@@ -577,25 +604,26 @@ namespace
         require(callback_response.headers.value("Location").value_or("") == "/app", "callback redirect mismatch");
         const auto set_cookies = callback_response.headers.all("Set-Cookie");
         require(set_cookies.size() == 2, "callback should set access and refresh cookies");
-        require(set_cookies[0].value.find("access_token=access-1") != std::string::npos, "access cookie missing");
-        require(set_cookies[1].value.find("refresh_token=refresh-1") != std::string::npos, "refresh cookie missing");
+        require(set_cookies[0].value.find("access_token_trader=access-1") != std::string::npos, "access cookie missing");
+        require(set_cookies[1].value.find("refresh_token_trader=refresh-1") != std::string::npos, "refresh cookie missing");
         require(set_cookies[0].value.find("HttpOnly") != std::string::npos, "access cookie should be httpOnly");
         require(set_cookies[0].value.find("SameSite=Lax") != std::string::npos, "access cookie should include sameSite");
 
         usub::unet::http::Request logout_request{
             .metadata = {
                 .method_token = "GET",
-                .uri = {.path = "/auth/logout"},
+                .uri = {.path = "/auth/logout", .query = "realm=trader"},
             },
         };
         logout_request.headers.addHeader(std::string_view{"Cookie"},
-                                         std::string_view{"access_token=access-1; refresh_token=refresh-1"});
+                                         std::string_view{"access_token_trader=access-1; refresh_token_trader=refresh-1"});
         usub::unet::http::Response logout_response;
         co_await handler.logout(logout_request, logout_response);
 
         require(logout_response.metadata.status_code == 302, "logout should redirect");
         require(logout_response.headers.value("Location").value_or("") == "/signed-out", "logout redirect mismatch");
         require(token_service.revoked_tokens.size() == 1, "logout should revoke refresh token");
+        require(token_service.revoked_realms[0] == "trader", "logout should route revoke through selected realm");
         require(token_service.revoked_tokens[0] == "refresh-1", "logout should revoke cookie refresh token");
         const auto expired_cookies = logout_response.headers.all("Set-Cookie");
         require(expired_cookies.size() == 2, "logout should clear both cookies");

@@ -9,6 +9,12 @@
 
 namespace keycloak
 {
+    struct StateEntry
+    {
+        std::string code_verifier;
+        std::string realm;
+    };
+
     template <class StateStore>
     class KeycloakHandler
     {
@@ -21,9 +27,20 @@ namespace keycloak
             co_return co_await store_.create_state(code_verifier, ttl);
         }
 
+        usub::uvent::task::Awaitable<std::string> create_state_entry(const StateEntry &entry,
+                                                                     std::chrono::seconds ttl)
+        {
+            co_return co_await store_.create_state_entry(entry, ttl);
+        }
+
         usub::uvent::task::Awaitable<std::optional<std::string>> consume_state(std::string_view state)
         {
             co_return co_await store_.consume_state(state);
+        }
+
+        usub::uvent::task::Awaitable<std::optional<StateEntry>> consume_state_entry(std::string_view state)
+        {
+            co_return co_await store_.consume_state_entry(state);
         }
 
         std::string random_state_32()

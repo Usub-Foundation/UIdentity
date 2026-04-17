@@ -36,16 +36,38 @@ namespace keycloak
         std::string_view code_verifier,
         std::chrono::seconds ttl)
     {
+        co_return co_await create_state_entry(StateEntry{
+                .code_verifier = std::string(code_verifier),
+                .realm = "",
+        },
+                                              ttl);
+    }
+
+    usub::uvent::task::Awaitable<std::string> MemoryStateStore::create_state_entry(
+        const StateEntry &entry,
+        std::chrono::seconds ttl)
+    {
         std::lock_guard lk(m_);
         cleanup_expired_unsafe();
 
         std::string state = random_state_32();
-        map_[state] = Entry{std::string(code_verifier),
+        map_[state] = Entry{entry.code_verifier,
+                            entry.realm,
                             std::chrono::steady_clock::now() + ttl};
         co_return state;
     }
 
     usub::uvent::task::Awaitable<std::optional<std::string>> MemoryStateStore::consume_state(
+        std::string_view state)
+    {
+        const auto entry = co_await consume_state_entry(state);
+        if (!entry.has_value())
+            co_return std::nullopt;
+
+        co_return entry->code_verifier;
+    }
+
+    usub::uvent::task::Awaitable<std::optional<StateEntry>> MemoryStateStore::consume_state_entry(
         std::string_view state)
     {
         std::lock_guard lk(m_);
@@ -55,9 +77,12 @@ namespace keycloak
         if (it == map_.end())
             co_return std::nullopt;
 
-        std::string verifier = std::move(it->second.verifier);
+        StateEntry entry{
+            .code_verifier = std::move(it->second.verifier),
+            .realm = std::move(it->second.realm),
+        };
         map_.erase(it);
-        co_return verifier;
+        co_return entry;
     }
 
 } // namespace keycloak

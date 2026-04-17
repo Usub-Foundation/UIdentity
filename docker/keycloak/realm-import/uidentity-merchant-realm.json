@@ -1,0 +1,49 @@
+{
+  "realm": "merchant",
+  "enabled": true,
+  "sslRequired": "NONE",
+  "displayName": "UIdentity Merchant Demo Realm",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "myclient",
+      "name": "UIdentity Merchant Demo Client",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:22813/api/v1/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:22813"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "mona",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Mona",
+      "lastName": "Merchant",
+      "email": "mona@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mona123",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
