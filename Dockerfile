@@ -2,6 +2,8 @@ FROM ubuntu:24.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -22,6 +24,8 @@ FROM ubuntu:24.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
@@ -34,4 +38,3 @@ COPY --from=builder /app/build/UIdentity /usr/local/bin/UIdentity
 EXPOSE 22813
 
 CMD ["/usr/local/bin/UIdentity"]
-
