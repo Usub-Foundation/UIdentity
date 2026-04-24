@@ -50,7 +50,7 @@ Important variables:
 - `UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS`: JWKS cache lifetime
 - `UIDENTITY_COOKIE_ACCESS_TOKEN_NAME` / `UIDENTITY_COOKIE_REFRESH_TOKEN_NAME`: cookie names used by the example app
 - `UIDENTITY_POST_LOGIN_REDIRECT` / `UIDENTITY_POST_LOGOUT_REDIRECT`: browser redirects after login/logout
-- `UIDENTITY_HEALTH_PATH` / `UIDENTITY_READY_PATH`: live and readiness endpoints
+- `UIDENTITY_HEALTH_PATH` / `UIDENTITY_READY_PATH` / `UIDENTITY_STARTUP_PATH`: liveness, readiness, and startup probe endpoints
 
 ## Docker Demo
 
@@ -70,6 +70,12 @@ Health endpoints:
 
 - Live: `http://localhost:22813/health/live`
 - Ready: `http://localhost:22813/health/ready`
+- Startup: `http://localhost:22813/health/startup`
+
+Probe responses:
+
+- Liveness returns `204` when the process can answer HTTP requests.
+- Readiness and startup return `503 {"status":"starting"}` until Redis bootstrap succeeds, then `204`.
 
 Bundled demo credentials:
 

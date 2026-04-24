@@ -28,6 +28,7 @@
 #include "keycloak/multi_realm.hpp"
 #include "keycloak/oauth/token_service.hpp"
 #include "keycloak/state_store/redis.hpp"
+#include "probes/Probe.h"
 #include "utils/cookies.hpp"
 
 namespace {
@@ -49,6 +50,7 @@ struct AppConfig {
     int uvent_threads{1};
     std::string health_path{"/health/live"};
     std::string ready_path{"/health/ready"};
+    std::string startup_path{"/health/startup"};
 };
 
 std::optional<std::string> getenv_string(const char *name) {
@@ -218,8 +220,9 @@ AppConfig load_config() {
     app.redis.max_redirections = getenv_int("UIDENTITY_REDIS_MAX_REDIRECTIONS", 5);
     app.redis.max_connections_per_node = static_cast<std::size_t>(std::max(1, getenv_int("UIDENTITY_REDIS_MAX_CONNECTIONS_PER_NODE", 4)));
     app.redis.force_standalone = getenv_bool("UIDENTITY_REDIS_FORCE_STANDALONE", true);
-    app.health_path = getenv_or("UIDENTITY_HEALTH_PATH", "/health/live");
-    app.ready_path = getenv_or("UIDENTITY_READY_PATH", "/health/ready");
+    app.health_path = getenv_or("UIDENTITY_LIVENESS_PATH", getenv_or("UIDENTITY_HEALTH_PATH", "/health/live"));
+    app.ready_path = getenv_or("UIDENTITY_READINESS_PATH", getenv_or("UIDENTITY_READY_PATH", "/health/ready"));
+    app.startup_path = getenv_or("UIDENTITY_STARTUP_PATH", "/health/startup");
 
     return app;
 }
@@ -443,43 +446,17 @@ auto protected_route(RealmManager &realm_manager,
 
 usub::uvent::task::Awaitable<void> bootstrap_redis(usub::Uvent &uvent,
                                                    usub::uredis::RedisClusterClient &redis,
-                                                   std::atomic<bool> &redis_ready) {
+                                                   std::atomic<bool> &running) {
     auto result = co_await redis.connect();
     if (!result) {
         std::cerr << "redis bootstrap failed: " << result.error().message << "\n";
-        redis_ready.store(false, std::memory_order_relaxed);
+        running.store(false, std::memory_order_release);
         uvent.stop();
         co_return;
     }
-    redis_ready.store(true, std::memory_order_relaxed);
+    running.store(true, std::memory_order_release);
     std::cout << "redis bootstrap succeeded\n";
     co_return;
-}
-
-auto health_route() {
-    return [](usub::unet::http::Request &,
-              usub::unet::http::Response &response) -> usub::uvent::task::Awaitable<void> {
-        response.setStatus(200);
-        response.addHeader("Content-Type", "application/json");
-        response.setBody(R"({"ok":true,"status":"live"})");
-        co_return;
-    };
-}
-
-auto readiness_route(std::atomic<bool> &redis_ready) {
-    return [&redis_ready](usub::unet::http::Request &,
-                          usub::unet::http::Response &response) -> usub::uvent::task::Awaitable<void> {
-        response.addHeader("Content-Type", "application/json");
-        if (!redis_ready.load(std::memory_order_relaxed)) {
-            response.setStatus(503);
-            response.setBody(R"({"ok":false,"status":"not_ready","dependency":"redis"})");
-            co_return;
-        }
-
-        response.setStatus(200);
-        response.setBody(R"({"ok":true,"status":"ready"})");
-        co_return;
-    };
 }
 
 } // namespace
@@ -488,7 +465,7 @@ int main() {
     const AppConfig app_cfg = load_config();
 
     usub::Uvent uvent{app_cfg.uvent_threads};
-    std::atomic<bool> redis_ready{false};
+    std::atomic<bool> running{false};
     usub::uredis::RedisClusterClient redis_client{app_cfg.redis};
     keycloak::RedisStateStore store(redis_client);
     UnetHttpClient http_client;
@@ -507,6 +484,7 @@ int main() {
             http_client);
 
     handlers::AuthHandler auth_handler{realm_manager, realm_manager, app_cfg.handler};
+    probes::ProbeHandler probe_handler{running};
     auto server_cfg = make_server_config(app_cfg);
     usub::unet::http::ServerRadix server{uvent, server_cfg};
 
@@ -518,10 +496,11 @@ int main() {
                   route<&decltype(auth_handler)::callback>(auth_handler));
     server.handle("GET", "/auth/logout", route<&decltype(auth_handler)::logout>(auth_handler));
     server.handle("GET", "/api/v1/me", protected_route(realm_manager, app_cfg.handler.token_cookies));
-    server.handle("GET", app_cfg.health_path, health_route());
-    server.handle("GET", app_cfg.ready_path, readiness_route(redis_ready));
+    server.handle("GET", app_cfg.health_path, route<&decltype(probe_handler)::liveness>(probe_handler));
+    server.handle("GET", app_cfg.ready_path, route<&decltype(probe_handler)::readiness>(probe_handler));
+    server.handle("GET", app_cfg.startup_path, route<&decltype(probe_handler)::startup>(probe_handler));
 
-    usub::uvent::system::co_spawn(bootstrap_redis(uvent, redis_client, redis_ready));
+    usub::uvent::system::co_spawn(bootstrap_redis(uvent, redis_client, running));
 
     std::cout << "configured callback server on http://" << app_cfg.listen_host << ":" << app_cfg.listen_port << "\n";
     std::cout << "configured realms: ";
@@ -538,6 +517,7 @@ int main() {
     std::cout << "protected route:   GET  /api/v1/me?realm=<realm>\n";
     std::cout << "live endpoint:     GET  " << app_cfg.health_path << "\n";
     std::cout << "ready endpoint:    GET  " << app_cfg.ready_path << "\n";
+    std::cout << "startup endpoint:  GET  " << app_cfg.startup_path << "\n";
 
     uvent.run();
     return 0;

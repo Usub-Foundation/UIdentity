@@ -1,26 +1,81 @@
-name: ci
+name: Build
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install toolchain and dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build pkg-config libssl-dev
+          sudo apt-get install -y build-essential gcc-13 g++-13 cmake ninja-build pkg-config libssl-dev
 
-      - name: Configure
-        run: cmake -S . -B build -G Ninja
+      - name: Install toolchain and dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install llvm ninja openssl@3 pkg-config
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install openssl ninja -y --no-progress
+
+      - name: Configure CMake (Linux, Ninja)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-13 \
+            -DCMAKE_CXX_COMPILER=g++-13 \
+            -DCMAKE_CXX_STANDARD=23 \
+            -DCMAKE_CXX_STANDARD_REQUIRED=ON
+
+      - name: Configure CMake (macOS, Ninja)
+        if: runner.os == 'macOS'
+        run: |
+          LLVM_PREFIX="$(brew --prefix llvm)"
+          OPENSSL_PREFIX="$(brew --prefix openssl@3)"
+          "$LLVM_PREFIX/bin/clang" --version
+          "$LLVM_PREFIX/bin/clang++" --version
+
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER="$LLVM_PREFIX/bin/clang" \
+            -DCMAKE_CXX_COMPILER="$LLVM_PREFIX/bin/clang++" \
+            -DCMAKE_CXX_STANDARD=23 \
+            -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+            -DOPENSSL_ROOT_DIR="$OPENSSL_PREFIX"
+
+      - name: Configure CMake (Windows, Ninja)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_CXX_STANDARD=23 `
+            -DCMAKE_CXX_STANDARD_REQUIRED=ON `
+            -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"
 
       - name: Build
-        run: cmake --build build
+        run: cmake --build build --parallel
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
