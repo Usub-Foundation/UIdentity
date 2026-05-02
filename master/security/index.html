@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://usub-development.github.io/UIdentity/master/security/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Security Notes - UIdentity Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Security Notes";
+        var mkdocs_page_input_path = "security.md";
+        var mkdocs_page_url = "/UIdentity/master/security/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> UIdentity Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../quick-start/">Quick Start</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../endpoints/">Runtime Endpoints</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../architecture/">Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../library-api/">Library API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../local-development/">Local Development</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Security Notes</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#pkce-state">PKCE State</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cookies">Cookies</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#jwt-validation">JWT Validation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#logout">Logout</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">UIdentity Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Security Notes</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Usub-development/UIdentity/edit/master/docs/security.md">Edit on Usub-development/UIdentity</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="security-notes">Security Notes<a class="headerlink" href="#security-notes" title="Permanent link">&para;</a></h1>
+<h2 id="pkce-state">PKCE State<a class="headerlink" href="#pkce-state" title="Permanent link">&para;</a></h2>
+<p>PKCE state entries are one-time values. The callback consumes state before exchanging the authorization code. This protects against state replay and ties the callback to the generated verifier.</p>
+<p>Use <code>RedisStateStore</code> for deployments with more than one service instance. <code>MemoryStateStore</code> is process-local and should only be used where that limitation is acceptable.</p>
+<h2 id="cookies">Cookies<a class="headerlink" href="#cookies" title="Permanent link">&para;</a></h2>
+<p>Access and refresh tokens are stored in <code>HttpOnly</code> cookies. The runtime appends the realm name to the configured cookie names, such as <code>access_token_trader</code>.</p>
+<p><code>UIDENTITY_COOKIE_SECURE</code> defaults to <code>true</code>. Keep it enabled in HTTPS environments. Disable it only for local HTTP development.</p>
+<h2 id="jwt-validation">JWT Validation<a class="headerlink" href="#jwt-validation" title="Permanent link">&para;</a></h2>
+<p>The validator checks signatures using JWKS, caches keys for <code>UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS</code>, and validates time-based claims with <code>UIDENTITY_AUTH_CLOCK_SKEW_SECONDS</code>.</p>
+<p>For stronger client targeting, enable audience validation:</p>
+<pre><code class="language-bash">UIDENTITY_AUTH_REQUIRE_AUDIENCE=true
+UIDENTITY_AUTH_EXPECTED_AUDIENCE=&lt;expected-audience&gt;
+</code></pre>
+<p>The <code>azp</code> claim is checked when <code>UIDENTITY_AUTH_EXPECTED_AZP</code> is set. By default, the runtime uses the configured Keycloak client id.</p>
+<h2 id="logout">Logout<a class="headerlink" href="#logout" title="Permanent link">&para;</a></h2>
+<p>Logout expires both token cookies. By default, it also attempts to revoke the refresh token:</p>
+<pre><code class="language-bash">UIDENTITY_REVOKE_REFRESH_TOKEN_ON_LOGOUT=true
+</code></pre>
+<p>Revocation failures are intentionally not surfaced to the browser logout flow in the current handler.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../local-development/" class="btn btn-neutral float-left" title="Local Development"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+      <p>Copyright (c) 2026 Usub-development</p>
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Usub-development/UIdentity/" class="fa fa-code-fork" style="color: #fcfcfc"> Usub-development/UIdentity</a>
+        </span>
+    
+    
+      <span><a href="../local-development/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="The Documentation for the UIdentity C++23 Keycloak and OIDC integration project" /><link rel="canonical" href="https://usub-development.github.io/UIdentity/master/" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>UIdentity Documentation</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Overview";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = "/UIdentity/master/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="." class="icon icon-home"> UIdentity Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Overview</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#project-layout">Project Layout</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#current-build-target">Current Build Target</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#where-to-start">Where To Start</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="quick-start/">Quick Start</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="endpoints/">Runtime Endpoints</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="architecture/">Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="library-api/">Library API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="local-development/">Local Development</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="security/">Security Notes</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href=".">UIdentity Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Overview</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Usub-development/UIdentity/edit/master/docs/index.md">Edit on Usub-development/UIdentity</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="uidentity">UIdentity<a class="headerlink" href="#uidentity" title="Permanent link">&para;</a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Temporary documentation</p>
+<p>This documentation is temporarily generated by AI and should be reviewed by the maintainers before it is treated as authoritative.</p>
+</div>
+<p>UIdentity is a C++23 Keycloak and OpenID Connect integration project. It provides reusable authentication building blocks and a small unet-based runtime for PKCE login, OAuth callback handling, cookie-based sessions, token refresh, logout, JWT validation, and multi-realm Keycloak deployments.</p>
+<p>The project currently centers on:</p>
+<ul>
+<li>PKCE authorization URL generation with one-time state storage.</li>
+<li>OAuth authorization-code exchange and refresh-token handling.</li>
+<li>Token revocation, introspection, and userinfo requests.</li>
+<li>JWT access-token validation against Keycloak JWKS.</li>
+<li>JWKS caching for repeated validations.</li>
+<li>Bearer-token middleware that attaches a <code>RequestContext</code> to unet requests.</li>
+<li>Redis-backed and in-memory state storage.</li>
+<li>A runtime server with login, callback, logout, <code>/me</code>, liveness, readiness, and startup endpoints.</li>
+</ul>
+<h2 id="project-layout">Project Layout<a class="headerlink" href="#project-layout" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">include/uidentity/        Public headers for library consumers
+src/keycloak/             State-store and PKCE implementations
+src/main.cpp              Example/runtime authentication service
+tests/                    Keycloak flow test source
+docker/keycloak/          Local Keycloak realm imports
+docs/                     MkDocs documentation
+</code></pre>
+<h2 id="current-build-target">Current Build Target<a class="headerlink" href="#current-build-target" title="Permanent link">&para;</a></h2>
+<p>The active CMake target is <code>UIdentity</code>. The test source exists at <code>tests/keycloak_flow_tests.cpp</code>, but the test target is currently commented out in <code>CMakeLists.txt</code>.</p>
+<pre><code class="language-bash">cmake -S . -B build
+cmake --build build --target UIdentity
+</code></pre>
+<h2 id="where-to-start">Where To Start<a class="headerlink" href="#where-to-start" title="Permanent link">&para;</a></h2>
+<p>Use the quick start for a first local build, configuration for environment variables, and runtime endpoints for the HTTP surface exposed by <code>src/main.cpp</code>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="quick-start/" class="btn btn-neutral float-right" title="Quick Start">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+      <p>Copyright (c) 2026 Usub-development</p>
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Usub-development/UIdentity/" class="fa fa-code-fork" style="color: #fcfcfc"> Usub-development/UIdentity</a>
+        </span>
+    
+    
+    
+      <span><a href="quick-start/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2026-05-02 22:35:15.327881+00:00
+-->

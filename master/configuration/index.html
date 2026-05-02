@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://usub-development.github.io/UIdentity/master/configuration/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Configuration - UIdentity Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Configuration";
+        var mkdocs_page_input_path = "configuration.md";
+        var mkdocs_page_url = "/UIdentity/master/configuration/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> UIdentity Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../quick-start/">Quick Start</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Configuration</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#server">Server</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#keycloak">Keycloak</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#jwt-validation">JWT Validation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cookies-and-redirects">Cookies And Redirects</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#redis">Redis</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../endpoints/">Runtime Endpoints</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../architecture/">Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../library-api/">Library API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../local-development/">Local Development</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../security/">Security Notes</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">UIdentity Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Configuration</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Usub-development/UIdentity/edit/master/docs/configuration.md">Edit on Usub-development/UIdentity</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
+<p><code>src/main.cpp</code> loads runtime configuration from environment variables. Realm-specific values can be overridden by suffixing the variable name with the uppercased realm name. For example, <code>UIDENTITY_KEYCLOAK_CLIENT_ID_MERCHANT</code> overrides <code>UIDENTITY_KEYCLOAK_CLIENT_ID</code> for the <code>merchant</code> realm.</p>
+<h2 id="server">Server<a class="headerlink" href="#server" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UIDENTITY_LISTEN_HOST</code></td>
+<td><code>127.0.0.1</code></td>
+<td>HTTP bind host.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_LISTEN_PORT</code></td>
+<td><code>22813</code></td>
+<td>HTTP bind port.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_UVENT_THREADS</code></td>
+<td><code>1</code></td>
+<td>Number of uvent threads.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_LIVENESS_PATH</code></td>
+<td><code>/health/live</code></td>
+<td>Liveness endpoint path.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_HEALTH_PATH</code></td>
+<td><code>/health/live</code></td>
+<td>Fallback for liveness path.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_READINESS_PATH</code></td>
+<td><code>/health/ready</code></td>
+<td>Readiness endpoint path.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_READY_PATH</code></td>
+<td><code>/health/ready</code></td>
+<td>Fallback for readiness path.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_STARTUP_PATH</code></td>
+<td><code>/health/startup</code></td>
+<td>Startup endpoint path.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="keycloak">Keycloak<a class="headerlink" href="#keycloak" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_AUTH_BASE_URL</code></td>
+<td><code>UIDENTITY_KEYCLOAK_BASE_URL</code> or <code>https://keycloak.0x000f.com</code></td>
+<td>Public Keycloak base URL used in redirects and issuer expectations.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_INTERNAL_BASE_URL</code></td>
+<td>Public base URL</td>
+<td>Internal Keycloak URL used for server-to-server token and JWKS calls.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_REALMS</code></td>
+<td>empty</td>
+<td>Comma- or whitespace-separated list of realms.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_REALM</code></td>
+<td><code>trader</code></td>
+<td>Single fallback realm when <code>UIDENTITY_KEYCLOAK_REALMS</code> is empty.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_CLIENT_ID</code></td>
+<td><code>myclient</code></td>
+<td>OIDC client id. Realm suffix supported.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_CLIENT_SECRET</code></td>
+<td>unset</td>
+<td>Optional OIDC client secret. Realm suffix supported.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_REDIRECT_URI</code></td>
+<td><code>http://&lt;host&gt;:&lt;port&gt;/api/v1/callback</code></td>
+<td>Redirect URI registered with Keycloak. Realm suffix supported.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_KEYCLOAK_SCOPES</code></td>
+<td><code>openid profile email</code></td>
+<td>Whitespace-separated authorization scopes.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="jwt-validation">JWT Validation<a class="headerlink" href="#jwt-validation" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UIDENTITY_AUTH_EXPECTED_ISSUER</code></td>
+<td><code>&lt;public-base&gt;/realms/&lt;realm&gt;</code></td>
+<td>Expected <code>iss</code> claim. Realm suffix supported.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_AUTH_JWKS_URL</code></td>
+<td><code>&lt;internal-base&gt;/realms/&lt;realm&gt;/protocol/openid-connect/certs</code></td>
+<td>JWKS endpoint. Realm suffix supported.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS</code></td>
+<td><code>300</code></td>
+<td>JWKS cache lifetime.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_AUTH_REQUIRE_AUDIENCE</code></td>
+<td><code>false</code></td>
+<td>Whether to enforce <code>aud</code>.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_AUTH_EXPECTED_AUDIENCE</code></td>
+<td>empty</td>
+<td>Expected audience when audience checks are enabled. Realm suffix supported.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_AUTH_EXPECTED_AZP</code></td>
+<td>client id</td>
+<td>Expected authorized party/client claim. Realm suffix supported.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_AUTH_CLOCK_SKEW_SECONDS</code></td>
+<td><code>60</code></td>
+<td>Allowed clock skew for time-based claims.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cookies-and-redirects">Cookies And Redirects<a class="headerlink" href="#cookies-and-redirects" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UIDENTITY_COOKIE_ACCESS_TOKEN_NAME</code></td>
+<td><code>access_token</code></td>
+<td>Base access-token cookie name. The runtime appends <code>_&lt;realm&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_COOKIE_REFRESH_TOKEN_NAME</code></td>
+<td><code>refresh_token</code></td>
+<td>Base refresh-token cookie name. The runtime appends <code>_&lt;realm&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_COOKIE_PATH</code></td>
+<td><code>/</code></td>
+<td>Cookie path.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_COOKIE_SECURE</code></td>
+<td><code>true</code></td>
+<td>Adds the <code>Secure</code> cookie attribute. Set to <code>false</code> for local HTTP-only development.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_COOKIE_SAMESITE</code></td>
+<td><code>Lax</code></td>
+<td>SameSite attribute.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_POST_LOGIN_REDIRECT</code></td>
+<td><code>/</code></td>
+<td>Redirect target after a successful callback.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_POST_LOGOUT_REDIRECT</code></td>
+<td><code>/</code></td>
+<td>Redirect target after logout.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REVOKE_REFRESH_TOKEN_ON_LOGOUT</code></td>
+<td><code>true</code></td>
+<td>Revoke the refresh token during logout when present.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="redis">Redis<a class="headerlink" href="#redis" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UIDENTITY_REDIS_HOST</code></td>
+<td><code>127.0.0.1</code></td>
+<td>Redis host.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_PORT</code></td>
+<td><code>6379</code></td>
+<td>Redis port.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_USERNAME</code></td>
+<td>unset</td>
+<td>Optional Redis username.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_PASSWORD</code></td>
+<td>unset</td>
+<td>Optional Redis password.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_CONNECT_TIMEOUT_MS</code></td>
+<td><code>5000</code></td>
+<td>Connect timeout.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_IO_TIMEOUT_MS</code></td>
+<td><code>5000</code></td>
+<td>I/O timeout.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_MAX_REDIRECTIONS</code></td>
+<td><code>5</code></td>
+<td>Maximum cluster redirections.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_MAX_CONNECTIONS_PER_NODE</code></td>
+<td><code>4</code></td>
+<td>Per-node connection cap.</td>
+</tr>
+<tr>
+<td><code>UIDENTITY_REDIS_FORCE_STANDALONE</code></td>
+<td><code>true</code></td>
+<td>Force standalone Redis behavior.</td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../quick-start/" class="btn btn-neutral float-left" title="Quick Start"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../endpoints/" class="btn btn-neutral float-right" title="Runtime Endpoints">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+      <p>Copyright (c) 2026 Usub-development</p>
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Usub-development/UIdentity/" class="fa fa-code-fork" style="color: #fcfcfc"> Usub-development/UIdentity</a>
+        </span>
+    
+    
+      <span><a href="../quick-start/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../endpoints/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://usub-development.github.io/UIdentity/master/architecture/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Architecture - UIdentity Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Architecture";
+        var mkdocs_page_input_path = "architecture.md";
+        var mkdocs_page_url = "/UIdentity/master/architecture/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> UIdentity Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../quick-start/">Quick Start</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../endpoints/">Runtime Endpoints</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Architecture</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#main-components">Main Components</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#pkce-login-flow">PKCE Login Flow</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#request-authentication-flow">Request Authentication Flow</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#multi-realm-behavior">Multi-Realm Behavior</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../library-api/">Library API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../local-development/">Local Development</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../security/">Security Notes</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">UIdentity Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Architecture</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Usub-development/UIdentity/edit/master/docs/architecture.md">Edit on Usub-development/UIdentity</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
+<p>UIdentity separates the authentication flow from the HTTP transport as much as possible. The reusable library code lives under <code>include/uidentity</code> and <code>src/keycloak</code>; <code>src/main.cpp</code> wires those pieces into a concrete unet server.</p>
+<h2 id="main-components">Main Components<a class="headerlink" href="#main-components" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Location</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PkceAuthStrategy</code></td>
+<td><code>include/uidentity/keycloak/auth/pkce_auth_strat.hpp</code></td>
+<td>Builds Keycloak authorization URLs with <code>S256</code> PKCE challenge data.</td>
+</tr>
+<tr>
+<td><code>TokenService</code></td>
+<td><code>include/uidentity/keycloak/oauth/token_service.hpp</code></td>
+<td>Exchanges authorization codes, refreshes tokens, revokes tokens, introspects tokens, and fetches userinfo.</td>
+</tr>
+<tr>
+<td><code>AccessTokenValidator</code></td>
+<td><code>include/uidentity/keycloak/jwt/access_token_validator.hpp</code></td>
+<td>Validates JWT format, algorithm support, RSA signature, issuer, time claims, audience, and authorized party.</td>
+</tr>
+<tr>
+<td><code>BearerAuthMiddleware</code></td>
+<td><code>include/uidentity/keycloak/auth/bearer_auth_middleware.hpp</code></td>
+<td>Authenticates <code>Authorization: Bearer</code> requests and stores a <code>RequestContext</code>.</td>
+</tr>
+<tr>
+<td><code>AuthHandler</code></td>
+<td><code>include/uidentity/handlers/AuthHandler.h</code></td>
+<td>Provides login, callback, and logout handlers for unet.</td>
+</tr>
+<tr>
+<td><code>MultiRealmManager</code></td>
+<td><code>include/uidentity/keycloak/multi_realm.hpp</code></td>
+<td>Hosts per-realm token services, validators, and PKCE strategy.</td>
+</tr>
+<tr>
+<td><code>MemoryStateStore</code></td>
+<td><code>include/uidentity/keycloak/state_store/memory.hpp</code></td>
+<td>In-process state store for development and tests.</td>
+</tr>
+<tr>
+<td><code>RedisStateStore</code></td>
+<td><code>include/uidentity/keycloak/state_store/redis.hpp</code></td>
+<td>Redis-backed one-time state store for runtime use.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="pkce-login-flow">PKCE Login Flow<a class="headerlink" href="#pkce-login-flow" title="Permanent link">&para;</a></h2>
+<ol>
+<li><code>/auth/login?realm=&lt;realm&gt;</code> calls <code>MultiRealmManager::start_login</code>.</li>
+<li>A PKCE verifier/challenge pair is generated.</li>
+<li>The verifier and realm are stored as a one-time state entry with a TTL.</li>
+<li>The user is redirected to Keycloak.</li>
+<li>Keycloak redirects back to <code>/api/v1/callback</code>.</li>
+<li>The callback consumes the state entry, exchanges the authorization code, and sets access and refresh token cookies scoped to the realm.</li>
+</ol>
+<h2 id="request-authentication-flow">Request Authentication Flow<a class="headerlink" href="#request-authentication-flow" title="Permanent link">&para;</a></h2>
+<p><code>/api/v1/me</code> uses cookies rather than an <code>Authorization</code> header. It validates the access token for the requested realm. If validation fails because the token is expired and a refresh token exists, the runtime refreshes tokens, updates cookies, and validates the new access token.</p>
+<p>For APIs that use bearer headers, <code>BearerAuthMiddleware</code> validates the token and writes <code>RequestContext</code> into <code>request.user_data</code>.</p>
+<h2 id="multi-realm-behavior">Multi-Realm Behavior<a class="headerlink" href="#multi-realm-behavior" title="Permanent link">&para;</a></h2>
+<p>The runtime accepts <code>UIDENTITY_KEYCLOAK_REALMS</code> as a comma- or whitespace-separated list. Each realm gets its own:</p>
+<ul>
+<li><code>KeycloakRealmConfig</code></li>
+<li><code>TokenServiceConfig</code></li>
+<li><code>AuthConfig</code></li>
+<li><code>TokenService</code></li>
+<li><code>AccessTokenValidator</code></li>
+<li><code>PkceAuthStrategy</code></li>
+</ul>
+<p>Cookie names are also realm-scoped by appending <code>_&lt;realm&gt;</code> to the configured base names.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../endpoints/" class="btn btn-neutral float-left" title="Runtime Endpoints"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../library-api/" class="btn btn-neutral float-right" title="Library API">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+      <p>Copyright (c) 2026 Usub-development</p>
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Usub-development/UIdentity/" class="fa fa-code-fork" style="color: #fcfcfc"> Usub-development/UIdentity</a>
+        </span>
+    
+    
+      <span><a href="../endpoints/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../library-api/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
