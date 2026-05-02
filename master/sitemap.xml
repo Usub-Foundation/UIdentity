@@ -1,35 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/architecture/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/architecture/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/configuration/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/configuration/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/endpoints/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/endpoints/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/library-api/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/library-api/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/local-development/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/local-development/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/quick-start/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/quick-start/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
     <url>
-         <loc>https://usub-development.github.io/UIdentity/master/security/</loc>
+         <loc>https://usub-development.github.io/Usub-Foundation/UIdentity/master/security/</loc>
          <lastmod>2026-05-02</lastmod>
     </url>
 </urlset>
