@@ -1,0 +1,89 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'docs/**'
+      - 'docs/mkdocs.yml'
+      - '.github/workflows/docs.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "docs-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install MkDocs and dependencies
+        run: pip install mkdocs-material mkdocs-autorefs
+
+      - name: Resolve branch settings
+        id: branch
+        run: |
+          BRANCH_NAME="${GITHUB_REF_NAME}"
+          SAFE_BRANCH="$(echo "${BRANCH_NAME}" | sed -E 's#[^A-Za-z0-9._-]+#-#g')"
+          SITE_URL="https://usub-development.github.io/unet/${SAFE_BRANCH}/"
+          EDIT_URI="edit/${BRANCH_NAME}/docs/"
+
+          echo "branch_name=${BRANCH_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "safe_branch=${SAFE_BRANCH}" >> "${GITHUB_OUTPUT}"
+          echo "site_url=${SITE_URL}" >> "${GITHUB_OUTPUT}"
+          echo "edit_uri=${EDIT_URI}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build documentation
+        env:
+          SITE_URL: ${{ steps.branch.outputs.site_url }}
+          EDIT_URI: ${{ steps.branch.outputs.edit_uri }}
+        run: mkdocs build --clean -f 'docs/mkdocs.yml'
+
+      - name: Move branch docs output
+        run: mv site site-branch
+
+      - name: Checkout main branch docs source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
+
+      - name: Build main documentation for site root
+        env:
+          SITE_URL: https://usub-development.github.io/unet/
+          EDIT_URI: edit/main/docs/
+        run: mkdocs build --clean -f 'main-src/docs/mkdocs.yml'
+
+      - name: Assemble deploy payload
+        run: |
+          mkdir -p deploy
+          cp -a main-src/site/. deploy/
+          mkdir -p "deploy/${{ steps.branch.outputs.safe_branch }}"
+          cp -a site-branch/. "deploy/${{ steps.branch.outputs.safe_branch }}/"
+
+      - name: Deploy documentation
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./deploy
+          keep_files: true
+
+      - name: Publish deployment URL
+        run: |
+          echo "Main docs deployed to https://usub-development.github.io/unet/" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Branch docs deployed to https://usub-development.github.io/unet/${{ steps.branch.outputs.safe_branch }}/" >> "${GITHUB_STEP_SUMMARY}"
