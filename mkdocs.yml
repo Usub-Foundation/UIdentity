@@ -1,0 +1,75 @@
+site_name: UIdentity Documentation
+site_description: Keycloak and OIDC documentation for the UIdentity C++23 authentication library
+site_url: !ENV [SITE_URL, https://usub-development.github.io/UIdentity/]
+repo_url: https://github.com/Usub-development/UIdentity/
+repo_name: Usub-development/UIdentity
+edit_uri: !ENV [EDIT_URI, edit/main/docs/]
+
+docs_dir: .
+site_dir: ../site
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home:
+      - Overview: index.md
+      - Quick Start: quick-start.md
+      - Installation: installation.md
+      - Architecture: architecture.md
+      - Configuration: config.md
+      - Roadmap: roadmap.md
+      - Contributing: contributing.md
+  - OIDC:
+      - Runtime Endpoints: endpoints.md
+      - Library API: library-api.md
+      - Local Development: local-development.md
+      - Security Notes: security.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Usub-development/UIdentity/
+      name: GitHub Repository
+
+copyright: Copyright (c) 2026 Usub-development
