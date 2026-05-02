@@ -39,4 +39,3 @@ cmake --build build --target UIdentity
 ## Where To Start
 
 Use the quick start for a first local build, configuration for environment variables, and runtime endpoints for the HTTP surface exposed by `src/main.cpp`.
-

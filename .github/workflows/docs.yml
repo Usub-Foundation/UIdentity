@@ -31,7 +31,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install MkDocs
-        run: python -m pip install --upgrade pip mkdocs
+        run: python -m pip install --upgrade pip -r docs/requirements.txt
 
       - name: Resolve branch settings
         id: branch

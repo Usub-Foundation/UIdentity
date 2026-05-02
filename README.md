@@ -16,7 +16,7 @@
 
 ## Project Shape
 
-This repository builds the library target `UIdentityLib`.
+This repository currently builds the library target `UIdentity`.
 
 The HTTP transport stays dependency-injected through the async HTTP concepts in `include/uidentity/api_models/concepts.hpp`. That keeps the auth logic testable and lets callers plug in their own HTTP layer.
 
@@ -24,15 +24,12 @@ The HTTP transport stays dependency-injected through the async HTTP concepts in 
 
 ```bash
 cmake -S . -B build
-cmake --build build --target UIdentityLib
+cmake --build build --target UIdentity
 ```
 
 ## Tests
 
-```bash
-cmake --build build --target UIdentityTests
-ctest --test-dir build --output-on-failure
-```
+The test source exists at `tests/keycloak_flow_tests.cpp`, but the CMake test target is currently commented out.
 
 The test executable in `tests/keycloak_flow_tests.cpp` covers:
 
@@ -46,17 +43,13 @@ The test executable in `tests/keycloak_flow_tests.cpp` covers:
 
 ## Docker
 
-The Dockerfile is a library build/test image. It configures CMake, builds `UIdentityLib` and `UIdentityTests`, and runs the test suite.
+The Dockerfile is intended to be a library build/test image.
 
 ```bash
 docker build -t uidentity .
 ```
 
-To rerun the tests from the built image:
-
-```bash
-docker run --rm uidentity
-```
+At the moment, the Dockerfile references `UIdentityLib` and `UIdentityTests`, while the active CMake target is `UIdentity` and the test target is commented out. Align those target names before relying on the Docker image as the canonical build/test path.
 
 ## Local Dependencies
 

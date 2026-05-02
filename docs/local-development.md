@@ -47,7 +47,9 @@ At the moment, the CMake test target is commented out. Re-enable `enable_testing
 The docs use MkDocs Material with `docs/mkdocs.yml` and `docs_dir: .`.
 
 ```bash
+python3 -m venv .venv-docs
+. .venv-docs/bin/activate
+python -m pip install -r docs/requirements.txt
 cd docs
 mkdocs serve -f mkdocs.yml
 ```
-
