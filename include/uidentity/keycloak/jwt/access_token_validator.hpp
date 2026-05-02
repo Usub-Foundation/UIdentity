@@ -12,11 +12,11 @@
 #include <uvent/tasks/Awaitable.h>
 #include <uvent/tasks/AwaitableFrame.h>
 
-#include "api_models/concepts.hpp"
-#include "api_models/http_context.hpp"
-#include "keycloak/detail/json_utils.hpp"
-#include "keycloak/detail/jwt_utils.hpp"
-#include "keycloak/detail/oidc_utils.hpp"
+#include "uidentity/api_models/concepts.hpp"
+#include "uidentity/api_models/http_context.hpp"
+#include "uidentity/keycloak/detail/json_utils.hpp"
+#include "uidentity/keycloak/detail/jwt_utils.hpp"
+#include "uidentity/keycloak/detail/oidc_utils.hpp"
 
 namespace keycloak
 {

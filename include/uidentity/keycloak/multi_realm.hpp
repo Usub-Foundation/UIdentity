@@ -9,12 +9,12 @@
 #include <utility>
 #include <vector>
 
-#include "api_models/http_context.hpp"
-#include "keycloak/auth/pkce_auth_strat.hpp"
-#include "keycloak/jwt/access_token_validator.hpp"
-#include "keycloak/keycloak_client.hpp"
-#include "keycloak/oauth/token_service.hpp"
-#include "keycloak/state_store/state_store.hpp"
+#include "uidentity/api_models/http_context.hpp"
+#include "uidentity/keycloak/auth/pkce_auth_strat.hpp"
+#include "uidentity/keycloak/jwt/access_token_validator.hpp"
+#include "uidentity/keycloak/keycloak_client.hpp"
+#include "uidentity/keycloak/oauth/token_service.hpp"
+#include "uidentity/keycloak/state_store/state_store.hpp"
 
 namespace keycloak
 {

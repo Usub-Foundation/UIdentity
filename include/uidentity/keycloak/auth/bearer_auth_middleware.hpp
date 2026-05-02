@@ -8,8 +8,8 @@
 #include <uvent/tasks/Awaitable.h>
 #include <uvent/tasks/AwaitableFrame.h>
 
-#include "api_models/http_context.hpp"
-#include "keycloak/jwt/access_token_validator.hpp"
+#include "uidentity/api_models/http_context.hpp"
+#include "uidentity/keycloak/jwt/access_token_validator.hpp"
 
 namespace keycloak
 {

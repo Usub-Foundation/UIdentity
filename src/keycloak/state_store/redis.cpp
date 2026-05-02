@@ -1,4 +1,4 @@
-#include "keycloak/state_store/redis.hpp"
+#include "uidentity/keycloak/state_store/redis.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include "utils/url_encode.hpp"
+#include "uidentity/utils/url_encode.hpp"
 
 namespace keycloak
 {

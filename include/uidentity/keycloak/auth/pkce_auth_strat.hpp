@@ -6,10 +6,10 @@
 #include <utility>
 #include <vector>
 
-#include "api_models/concepts.hpp"
-#include "keycloak/config.hpp"
-#include "keycloak/pkce.hpp"
-#include "utils/url_encode.hpp"
+#include "uidentity/api_models/concepts.hpp"
+#include "uidentity/keycloak/config.hpp"
+#include "uidentity/keycloak/pkce.hpp"
+#include "uidentity/utils/url_encode.hpp"
 
 namespace keycloak
 {

@@ -8,7 +8,7 @@
 
 #include <unet/http.hpp>
 
-#include "utils/url_encode.hpp"
+#include "uidentity/utils/url_encode.hpp"
 
 namespace keycloak::detail
 {

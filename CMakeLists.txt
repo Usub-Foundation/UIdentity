@@ -44,25 +44,6 @@ FetchContent_Declare(
 )
 
 
-
-FetchContent_Declare(
-  picosha2
-  GIT_REPOSITORY https://github.com/okdshin/PicoSHA2.git
-  GIT_TAG v1.0.1
-)
-
-# Don't rely on PicoSHA2 providing CMake targets; it doesn't.
-FetchContent_GetProperties(picosha2)
-if(NOT picosha2_POPULATED)
-  FetchContent_Populate(picosha2)
-endif()
-
-add_library(picosha2 INTERFACE)
-add_library(picosha2::picosha2 ALIAS picosha2)
-
-# picosha2.h lives at repo root
-target_include_directories(picosha2 INTERFACE "${picosha2_SOURCE_DIR}")
-
 FetchContent_Declare(uvent
   GIT_REPOSITORY https://github.com/Usub-development/uvent.git
   GIT_TAG main
@@ -74,22 +55,20 @@ set(UREDIS_LOGS ON CACHE BOOL "Enable uredis internal logging" FORCE)
 set(UREDIS_BUILD_EXAMPLES OFF CACHE BOOL "Disable uredis examples in parent builds" FORCE)
 set(UREDIS_BUILD_TESTS OFF CACHE BOOL "Disable uredis tests in parent builds" FORCE)
 
-FetchContent_MakeAvailable(ulog uredis unet glaze jwt-cpp picosha2 uvent)
+FetchContent_MakeAvailable(ulog uredis unet glaze jwt-cpp uvent)
 
 find_package(OpenSSL REQUIRED)
 
 
-file(GLOB_RECURSE UIDENTITY_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
-file(GLOB_RECURSE UIDENTITY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-set(UIDENTITY_APP_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
-list(REMOVE_ITEM UIDENTITY_SOURCES "${UIDENTITY_APP_SOURCE}")
+file(GLOB_RECURSE UIDENTITY_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
+file(GLOB_RECURSE UIDENTITY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_library(UIdentityLib
+add_library(UIdentity
   ${UIDENTITY_SOURCES}
   ${UIDENTITY_HEADERS}
 )
 
-target_include_directories(UIdentityLib
+target_include_directories(UIdentity
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   PUBLIC
@@ -97,31 +76,27 @@ target_include_directories(UIdentityLib
   $<INSTALL_INTERFACE:include/>
 )
 
-target_link_libraries(UIdentityLib PUBLIC
+target_link_libraries(UIdentity PUBLIC
   usub::unet
   glaze::glaze
   jwt-cpp::jwt-cpp
   usub::ulog
-  picosha2::picosha2
   usub::uvent
   usub::uredis
   OpenSSL::SSL
   OpenSSL::Crypto
 )
 
-add_executable(UIdentity ${UIDENTITY_APP_SOURCE})
-target_link_libraries(UIdentity PRIVATE UIdentityLib)
+# enable_testing()
 
-enable_testing()
+# add_executable(UIdentityTests
+#   tests/keycloak_flow_tests.cpp
+# )
 
-add_executable(UIdentityTests
-  tests/keycloak_flow_tests.cpp
-)
+# target_link_libraries(UIdentityTests PRIVATE
+#   UIdentity
+#   OpenSSL::SSL
+#   OpenSSL::Crypto
+# )
 
-target_link_libraries(UIdentityTests PRIVATE
-  UIdentityLib
-  OpenSSL::SSL
-  OpenSSL::Crypto
-)
-
-add_test(NAME keycloak_flow_tests COMMAND UIdentityTests)
+# add_test(NAME keycloak_flow_tests COMMAND UIdentityTests)

@@ -10,11 +10,11 @@
 #include <uvent/tasks/Awaitable.h>
 #include <uvent/tasks/AwaitableFrame.h>
 
-#include "api_models/concepts.hpp"
-#include "api_models/http_context.hpp"
-#include "keycloak/auth/bearer_auth_middleware.hpp"
-#include "keycloak/auth/pkce_auth_strat.hpp"
-#include "keycloak/oauth/token_service.hpp"
+#include "uidentity/api_models/concepts.hpp"
+#include "uidentity/api_models/http_context.hpp"
+#include "uidentity/keycloak/auth/bearer_auth_middleware.hpp"
+#include "uidentity/keycloak/auth/pkce_auth_strat.hpp"
+#include "uidentity/keycloak/oauth/token_service.hpp"
 
 namespace keycloak
 {

@@ -23,17 +23,17 @@
 #include <uvent/tasks/AwaitableFrame.h>
 #include <uredis/RedisClusterClient.h>
 
-#include "api_models/http_context.hpp"
-#include "handlers/AuthHandler.h"
-#include "keycloak/auth/bearer_auth_middleware.hpp"
-#include "keycloak/auth/pkce_auth_strat.hpp"
-#include "keycloak/detail/oidc_utils.hpp"
-#include "keycloak/jwt/access_token_validator.hpp"
-#include "keycloak/keycloak_client.hpp"
-#include "keycloak/oidc/discovery.hpp"
-#include "keycloak/state_store/memory.hpp"
-#include "keycloak/state_store/redis.hpp"
-#include "utils/cookies.hpp"
+#include "uidentity/api_models/http_context.hpp"
+#include "uidentity/handlers/AuthHandler.h"
+#include "uidentity/keycloak/auth/bearer_auth_middleware.hpp"
+#include "uidentity/keycloak/auth/pkce_auth_strat.hpp"
+#include "uidentity/keycloak/detail/oidc_utils.hpp"
+#include "uidentity/keycloak/jwt/access_token_validator.hpp"
+#include "uidentity/keycloak/keycloak_client.hpp"
+#include "uidentity/keycloak/oidc/discovery.hpp"
+#include "uidentity/keycloak/state_store/memory.hpp"
+#include "uidentity/keycloak/state_store/redis.hpp"
+#include "uidentity/utils/cookies.hpp"
 
 namespace
 {

@@ -8,10 +8,10 @@
 
 #include <unet/http.hpp>
 
-#include "keycloak/keycloak_client.hpp"
-#include "keycloak/oauth/token_service.hpp"
-#include "utils/cookies.hpp"
-#include "utils/url_encode.hpp"
+#include "uidentity/keycloak/keycloak_client.hpp"
+#include "uidentity/keycloak/oauth/token_service.hpp"
+#include "uidentity/utils/cookies.hpp"
+#include "uidentity/utils/url_encode.hpp"
 
 namespace handlers {
 

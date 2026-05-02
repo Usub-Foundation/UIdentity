@@ -12,7 +12,7 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 
-#include "keycloak/detail/json_utils.hpp"
+#include "uidentity/keycloak/detail/json_utils.hpp"
 
 namespace keycloak::detail
 {
