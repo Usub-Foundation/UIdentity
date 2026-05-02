@@ -1,22 +1,29 @@
 #include "uidentity/keycloak/state_store/memory.hpp"
-#include <random>
+#include <openssl/rand.h>
+#include <stdexcept>
 #include <utility>
 
 namespace keycloak
 {
 
     static constexpr char kHex[] = "0123456789abcdef";
+    static constexpr std::size_t kStateBytes = 16;
 
     std::string MemoryStateStore::random_state_32()
     {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<int> dist(0, 15);
+        unsigned char bytes[kStateBytes];
+        if (RAND_bytes(bytes, static_cast<int>(sizeof(bytes))) != 1)
+        {
+            throw std::runtime_error("RAND_bytes failed while generating OAuth state");
+        }
 
         std::string s;
-        s.resize(32);
-        for (auto &c : s)
-            c = kHex[dist(gen)];
+        s.reserve(kStateBytes * 2);
+        for (const unsigned char byte : bytes)
+        {
+            s.push_back(kHex[(byte >> 4) & 0x0F]);
+            s.push_back(kHex[byte & 0x0F]);
+        }
         return s;
     }
 
@@ -50,11 +57,21 @@ namespace keycloak
         std::lock_guard lk(m_);
         cleanup_expired_unsafe();
 
-        std::string state = random_state_32();
-        map_[state] = Entry{entry.code_verifier,
-                            entry.realm,
-                            std::chrono::steady_clock::now() + ttl};
-        co_return state;
+        for (int attempt = 0; attempt < 8; ++attempt)
+        {
+            std::string state = random_state_32();
+            if (map_.contains(state))
+            {
+                continue;
+            }
+
+            map_[state] = Entry{entry.code_verifier,
+                                entry.realm,
+                                std::chrono::steady_clock::now() + ttl};
+            co_return state;
+        }
+
+        throw std::runtime_error("MemoryStateStore::create_state failed: unable to allocate unique state");
     }
 
     usub::uvent::task::Awaitable<std::optional<std::string>> MemoryStateStore::consume_state(

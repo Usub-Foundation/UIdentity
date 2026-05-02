@@ -16,9 +16,6 @@ namespace
     constexpr std::string_view kCharset =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
-    // NOTE: This uses std::random_device + mt19937_64.
-    // It’s *format-correct* for PKCE, but not cryptographic.
-    // Might swap this to RAND_bytes later without changing callers, idk yet if its needed.
     std::string generate_random_string(std::size_t length)
     {
         std::string bytes(length, '\0');

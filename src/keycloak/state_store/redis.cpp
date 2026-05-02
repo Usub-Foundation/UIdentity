@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
-#include <random>
+#include <openssl/rand.h>
 #include <stdexcept>
 #include <utility>
 
@@ -12,6 +12,8 @@
 namespace keycloak
 {
     static constexpr char kHex[] = "0123456789abcdef";
+    static constexpr std::size_t kStateBytes = 16;
+
     RedisStateStore::RedisStateStore(usub::uredis::RedisClusterClient &redis, std::string key_prefix)
         : redis_(redis), key_prefix_(std::move(key_prefix))
     {
@@ -26,14 +28,19 @@ namespace keycloak
 
     std::string RedisStateStore::random_state_32()
     {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<int> dist(0, 15);
+        unsigned char bytes[kStateBytes];
+        if (RAND_bytes(bytes, static_cast<int>(sizeof(bytes))) != 1)
+        {
+            throw std::runtime_error("RAND_bytes failed while generating OAuth state");
+        }
 
         std::string s;
-        s.resize(32);
-        for (auto &c : s)
-            c = kHex[dist(gen)];
+        s.reserve(kStateBytes * 2);
+        for (const unsigned char byte : bytes)
+        {
+            s.push_back(kHex[(byte >> 4) & 0x0F]);
+            s.push_back(kHex[byte & 0x0F]);
+        }
         return s;
     }
 

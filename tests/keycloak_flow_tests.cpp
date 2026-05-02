@@ -277,6 +277,14 @@ namespace
         return signature;
     }
 
+    std::string make_signed_jwt_with_payload(EVP_PKEY *private_key, std::string_view payload)
+    {
+        const std::string header = R"({"alg":"RS256","typ":"JWT","kid":"test-kid"})";
+        const auto signing_input = base64url_encode(header) + "." + base64url_encode(payload);
+        const auto signature = sign_rs256(private_key, signing_input);
+        return signing_input + "." + base64url_encode(signature);
+    }
+
     std::string make_signed_jwt(EVP_PKEY *private_key,
                                 std::string_view issuer,
                                 std::string_view audience,
@@ -286,7 +294,6 @@ namespace
                              std::chrono::system_clock::now().time_since_epoch())
                              .count();
 
-        const std::string header = R"({"alg":"RS256","typ":"JWT","kid":"test-kid"})";
         const std::string payload =
             std::string("{") +
             "\"iss\":\"" + std::string(issuer) + "\"," +
@@ -301,9 +308,7 @@ namespace
             "\"resource_access\":{\"api\":{\"roles\":[\"reader\"]}}" +
             "}";
 
-        const auto signing_input = base64url_encode(header) + "." + base64url_encode(payload);
-        const auto signature = sign_rs256(private_key, signing_input);
-        return signing_input + "." + base64url_encode(signature);
+        return make_signed_jwt_with_payload(private_key, payload);
     }
 
     usub::uvent::task::Awaitable<void> test_oidc_discovery()
@@ -494,6 +499,33 @@ namespace
         const auto validation_again = co_await validator.validate(jwt);
         require(validation_again.ok, "validator should accept signed jwt on second validation");
         require(http.requests.size() == 1, "validator should reuse cached jwks");
+
+        const auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                             std::chrono::system_clock::now().time_since_epoch())
+                             .count();
+        const auto missing_issuer_jwt = make_signed_jwt_with_payload(
+            key_material.private_key.get(),
+            std::string("{") +
+                "\"sub\":\"user-123\","
+                "\"aud\":[\"" + audience + "\"],"
+                "\"azp\":\"" + azp + "\","
+                "\"exp\":" + std::to_string(now + 3600) +
+                "}");
+        const auto missing_issuer = co_await validator.validate(missing_issuer_jwt);
+        require(!missing_issuer.ok, "validator should reject jwt without issuer");
+        require(missing_issuer.error == "jwt_missing_issuer", "missing issuer error mismatch");
+
+        const auto missing_exp_jwt = make_signed_jwt_with_payload(
+            key_material.private_key.get(),
+            std::string("{") +
+                "\"iss\":\"" + issuer + "\","
+                "\"sub\":\"user-123\","
+                "\"aud\":[\"" + audience + "\"],"
+                "\"azp\":\"" + azp + "\""
+                "}");
+        const auto missing_exp = co_await validator.validate(missing_exp_jwt);
+        require(!missing_exp.ok, "validator should reject jwt without exp");
+        require(missing_exp.error == "jwt_missing_exp", "missing exp error mismatch");
 
         keycloak::BearerAuthMiddleware<keycloak::AccessTokenValidator<FakeHttpClient>> middleware(validator);
         usub::unet::http::Request request{

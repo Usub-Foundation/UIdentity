@@ -62,6 +62,11 @@ namespace keycloak
             }
 
             const auto kid = detail::extract_json_string(jwt->header_json, "kid").value_or("");
+            if (kid.empty())
+            {
+                co_return failure(401, "jwt_missing_kid");
+            }
+
             auto keys = cached_keys(now_seconds());
             if (keys.empty())
             {
@@ -77,7 +82,7 @@ namespace keycloak
                                              keys.end(),
                                              [&kid](const detail::Jwk &key)
                                              {
-                                                 return kid.empty() || key.kid == kid;
+                                                 return key.kid == kid;
                                              });
             if (key_it == keys.end())
             {
@@ -94,20 +99,24 @@ namespace keycloak
                                  .count();
             const auto skew = static_cast<std::int64_t>(cfg_.clock_skew_seconds);
 
-            if (const auto issuer = detail::extract_json_string(jwt->payload_json, "iss"))
+            const auto issuer = detail::extract_json_string(jwt->payload_json, "iss");
+            if (!issuer.has_value() || issuer->empty())
             {
-                if (!cfg_.expected_issuer.empty() && *issuer != cfg_.expected_issuer)
-                {
-                    co_return failure(401, "jwt_issuer_mismatch");
-                }
+                co_return failure(401, "jwt_missing_issuer");
+            }
+            if (!cfg_.expected_issuer.empty() && *issuer != cfg_.expected_issuer)
+            {
+                co_return failure(401, "jwt_issuer_mismatch");
             }
 
-            if (const auto exp = detail::extract_json_int64(jwt->payload_json, "exp"))
+            const auto exp = detail::extract_json_int64(jwt->payload_json, "exp");
+            if (!exp.has_value())
             {
-                if (now > (*exp + skew))
-                {
-                    co_return failure(401, "jwt_expired");
-                }
+                co_return failure(401, "jwt_missing_exp");
+            }
+            if (now > (*exp + skew))
+            {
+                co_return failure(401, "jwt_expired");
             }
 
             if (const auto nbf = detail::extract_json_int64(jwt->payload_json, "nbf"))
