@@ -3,7 +3,7 @@
 #include <utility>
 #include <cstddef>
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
 
     struct PkcePair
@@ -16,4 +16,4 @@ namespace keycloak
     // verifier_len will be clamped to [43, 128].
     PkcePair generate_pkce_pair(std::size_t verifier_len = 64);
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

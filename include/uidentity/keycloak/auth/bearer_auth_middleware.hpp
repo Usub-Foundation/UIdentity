@@ -11,7 +11,7 @@
 #include "uidentity/api_models/http_context.hpp"
 #include "uidentity/keycloak/jwt/access_token_validator.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     template <class V>
     concept AccessTokenValidatorLike =
@@ -55,4 +55,4 @@ namespace keycloak
     private:
         Validator &validator_;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

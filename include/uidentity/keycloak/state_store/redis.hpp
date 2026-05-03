@@ -11,7 +11,7 @@
 #include "uidentity/keycloak/state_store/state_store.hpp"
 #include "uredis/RedisClusterClient.h"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     class RedisStateStore
     {
@@ -38,4 +38,4 @@ namespace keycloak
 
         std::string make_key(std::string_view state) const;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

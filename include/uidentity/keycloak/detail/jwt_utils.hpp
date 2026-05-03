@@ -14,7 +14,7 @@
 
 #include "uidentity/keycloak/detail/json_utils.hpp"
 
-namespace keycloak::detail
+namespace usub::uidentity::keycloak::detail
 {
     struct DecodedJwt
     {
@@ -336,4 +336,4 @@ namespace keycloak::detail
         EVP_MD_CTX_free(ctx);
         return ok;
     }
-} // namespace keycloak::detail
+} // namespace usub::uidentity::keycloak::detail

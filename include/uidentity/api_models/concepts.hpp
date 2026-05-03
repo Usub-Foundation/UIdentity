@@ -8,7 +8,7 @@
 #include <unet/http.hpp>
 #include <uvent/tasks/Awaitable.h>
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
 
     template <class S>
@@ -32,4 +32,4 @@ namespace keycloak
             { c.send(request) } -> std::same_as<usub::uvent::task::Awaitable<usub::unet::http::Response>>;
         };
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

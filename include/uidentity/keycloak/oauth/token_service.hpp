@@ -16,7 +16,7 @@
 #include "uidentity/keycloak/detail/oidc_utils.hpp"
 #include "uidentity/keycloak/oauth/types.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     struct TokenServiceConfig
     {
@@ -343,4 +343,4 @@ namespace keycloak
         TokenServiceConfig cfg_;
         HttpClient &http_client_;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

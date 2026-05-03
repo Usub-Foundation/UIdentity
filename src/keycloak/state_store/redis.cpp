@@ -9,7 +9,7 @@
 
 #include "uidentity/utils/url_encode.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     static constexpr char kHex[] = "0123456789abcdef";
     static constexpr std::size_t kStateBytes = 16;
@@ -68,7 +68,7 @@ namespace keycloak
     {
         std::string encode_state_entry(const StateEntry &entry)
         {
-            return "verifier=" + url_encode(entry.code_verifier) + "&realm=" + url_encode(entry.realm);
+            return "verifier=" + utils::url_encode(entry.code_verifier) + "&realm=" + utils::url_encode(entry.realm);
         }
 
         std::optional<StateEntry> decode_state_entry(std::string_view raw)
@@ -85,9 +85,9 @@ namespace keycloak
                 if (!part.empty())
                 {
                     const std::size_t eq = part.find('=');
-                    const std::string key = url_decode(part.substr(0, eq));
+                    const std::string key = utils::url_decode(part.substr(0, eq));
                     const std::string value =
-                        eq == std::string_view::npos ? std::string{} : url_decode(part.substr(eq + 1));
+                        eq == std::string_view::npos ? std::string{} : utils::url_decode(part.substr(eq + 1));
 
                     if (key == "verifier")
                     {
@@ -201,4 +201,4 @@ namespace keycloak
         };
     }
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

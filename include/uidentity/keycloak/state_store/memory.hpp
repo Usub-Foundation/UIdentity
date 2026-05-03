@@ -11,7 +11,7 @@
 
 #include "uidentity/keycloak/state_store/state_store.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
 
     class MemoryStateStore
@@ -40,4 +40,4 @@ namespace keycloak
         std::unordered_map<std::string, Entry> map_;
     };
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

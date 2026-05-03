@@ -7,7 +7,7 @@
 #include <uvent/tasks/Awaitable.h>
 #include <uvent/tasks/AwaitableFrame.h>
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     struct StateEntry
     {
@@ -57,4 +57,4 @@ namespace keycloak
         StateStore &store_;
     };
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

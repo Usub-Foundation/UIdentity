@@ -16,7 +16,7 @@
 #include "uidentity/keycloak/auth/pkce_auth_strat.hpp"
 #include "uidentity/keycloak/oauth/token_service.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     struct CallbackInput
     {
@@ -129,4 +129,4 @@ namespace keycloak
         Middleware &auth_middleware_;
         PkceAuthStrategy auth_strategy_;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

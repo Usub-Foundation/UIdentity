@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-namespace keycloak::detail
+namespace usub::uidentity::keycloak::detail
 {
     inline std::size_t skip_ws(std::string_view text, std::size_t pos)
     {
@@ -414,4 +414,4 @@ namespace keycloak::detail
             }
         }
     }
-} // namespace keycloak::detail
+} // namespace usub::uidentity::keycloak::detail

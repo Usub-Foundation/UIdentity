@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
 
     struct KeycloakRealmConfig
@@ -31,4 +31,4 @@ namespace keycloak
         bool omit_default_port = true;
     };
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

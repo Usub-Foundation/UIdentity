@@ -19,7 +19,7 @@ This keeps transport concerns outside the auth logic. The runtime provides `Unet
 
 ## Key Configuration Types
 
-`keycloak::KeycloakRealmConfig`:
+`usub::uidentity::keycloak::KeycloakRealmConfig`:
 
 - `base_url`
 - `realm`
@@ -29,7 +29,7 @@ This keeps transport concerns outside the auth logic. The runtime provides `Unet
 - `pkce_verifier_len`
 - `omit_default_port`
 
-`keycloak::TokenServiceConfig`:
+`usub::uidentity::keycloak::TokenServiceConfig`:
 
 - `base_url`
 - `realm`
@@ -37,7 +37,7 @@ This keeps transport concerns outside the auth logic. The runtime provides `Unet
 - `client_secret`
 - `redirect_uri`
 
-`AuthConfig`:
+`usub::uidentity::AuthConfig`:
 
 - `expected_issuer`
 - `jwks_url`
@@ -49,7 +49,7 @@ This keeps transport concerns outside the auth logic. The runtime provides `Unet
 
 ## TokenService
 
-`keycloak::TokenService<HttpClient>` supports:
+`usub::uidentity::keycloak::TokenService<HttpClient>` supports:
 
 - `exchange_authorization_code(code, code_verifier)`
 - `refresh_tokens(refresh_token)`
@@ -57,11 +57,11 @@ This keeps transport concerns outside the auth logic. The runtime provides `Unet
 - `introspect_token(token)`
 - `fetch_user_info(access_token)`
 
-Methods return `keycloak::OAuthResult`, which contains `ok`, `http_status`, `error`, `TokenSet`, and `UserInfo`.
+Methods return `usub::uidentity::keycloak::OAuthResult`, which contains `ok`, `http_status`, `error`, `TokenSet`, and `UserInfo`.
 
 ## AccessTokenValidator
 
-`keycloak::AccessTokenValidator<HttpClient>` validates JWT access tokens against JWKS. Successful validation returns a `JwtValidationResult` with a populated `RequestContext`.
+`usub::uidentity::keycloak::AccessTokenValidator<HttpClient>` validates JWT access tokens against JWKS. Successful validation returns a `JwtValidationResult` with a populated `usub::uidentity::RequestContext`.
 
 Validation includes:
 
@@ -82,7 +82,7 @@ The multi-realm flow stores both the PKCE verifier and realm name in a `StateEnt
 
 ## Request Context
 
-Authenticated identity data is carried in `RequestContext`:
+Authenticated identity data is carried in `usub::uidentity::RequestContext`:
 
 ```cpp
 struct RequestContext {
@@ -97,5 +97,5 @@ struct RequestContext {
 };
 ```
 
-Use `get_request_context(request)` after middleware or validation code calls `set_request_context(request, context)`.
+Use `usub::uidentity::get_request_context(request)` after middleware or validation code calls `usub::uidentity::set_request_context(request, context)`.
 

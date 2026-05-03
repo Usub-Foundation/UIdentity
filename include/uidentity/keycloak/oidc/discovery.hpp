@@ -10,7 +10,7 @@
 #include "uidentity/keycloak/detail/json_utils.hpp"
 #include "uidentity/keycloak/detail/oidc_utils.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     struct OidcEndpoints
     {
@@ -77,4 +77,4 @@ namespace keycloak
     private:
         HttpClient &http_client_;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

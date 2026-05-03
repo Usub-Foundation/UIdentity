@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
 
     static constexpr char kHex[] = "0123456789abcdef";
@@ -102,4 +102,4 @@ namespace keycloak
         co_return entry;
     }
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

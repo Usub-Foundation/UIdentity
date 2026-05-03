@@ -16,7 +16,7 @@
 #include "uidentity/keycloak/oauth/token_service.hpp"
 #include "uidentity/keycloak/state_store/state_store.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     struct MultiRealmConfig
     {
@@ -185,4 +185,4 @@ namespace keycloak
         std::unordered_map<std::string, std::unique_ptr<RealmRuntime>> realms_;
         std::vector<std::string> realm_order_;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

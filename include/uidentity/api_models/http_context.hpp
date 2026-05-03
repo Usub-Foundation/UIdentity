@@ -3,9 +3,13 @@
 #include <any>
 #include <chrono>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <unet/http.hpp>
+
+namespace usub::uidentity
+{
 
 struct RequestContext
 {
@@ -51,3 +55,5 @@ inline void set_request_context(usub::unet::http::Request &request, RequestConte
 {
     request.user_data = std::move(context);
 }
+
+} // namespace usub::uidentity

@@ -8,7 +8,8 @@
 #include <ulog/ulog.h>
 #include <unet/http.hpp>
 
-namespace probes {
+namespace usub::uidentity::probes
+{
 
 inline std::string make_location_string(
         const std::source_location &location = std::source_location::current()) {
@@ -82,4 +83,4 @@ private:
     std::atomic<bool> &running_;
 };
 
-} // namespace probes
+} // namespace usub::uidentity::probes

@@ -91,7 +91,7 @@ namespace
 
 } // namespace
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
 
     PkcePair generate_pkce_pair(std::size_t verifier_len)
@@ -108,4 +108,4 @@ namespace keycloak
         return PkcePair{std::move(verifier), std::move(challenge)};
     }
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

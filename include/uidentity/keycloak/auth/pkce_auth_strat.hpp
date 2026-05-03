@@ -11,7 +11,7 @@
 #include "uidentity/keycloak/pkce.hpp"
 #include "uidentity/utils/url_encode.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
 
     struct AuthStart
@@ -36,16 +36,16 @@ namespace keycloak
                     q.push_back('&');
                 first = false;
 
-                q += url_encode(std::string(k));
+                q += utils::url_encode(std::string(k));
                 q.push_back('=');
-                q += url_encode(v);
+                q += utils::url_encode(v);
             }
             return q;
         }
 
         inline std::string authorization_endpoint(const KeycloakRealmConfig &cfg)
         {
-            return cfg.base_url + "/realms/" + url_encode(cfg.realm) + "/protocol/openid-connect/auth";
+            return cfg.base_url + "/realms/" + utils::url_encode(cfg.realm) + "/protocol/openid-connect/auth";
         }
 
         inline std::string join_scopes(const std::vector<std::string> &scopes)
@@ -100,4 +100,4 @@ namespace keycloak
         KeycloakRealmConfig cfg_;
     };
 
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

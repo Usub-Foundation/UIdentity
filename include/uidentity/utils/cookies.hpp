@@ -10,7 +10,7 @@
 
 #include "uidentity/utils/url_encode.hpp"
 
-namespace utils
+namespace usub::uidentity::utils
 {
 
     struct CookieOptions
@@ -156,4 +156,4 @@ namespace utils
         };
     }
 
-} // namespace utils
+} // namespace usub::uidentity::utils

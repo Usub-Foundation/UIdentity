@@ -12,7 +12,7 @@ The project currently centers on:
 - Token revocation, introspection, and userinfo requests.
 - JWT access-token validation against Keycloak JWKS.
 - JWKS caching for repeated validations.
-- Bearer-token middleware that attaches a `RequestContext` to unet requests.
+- Bearer-token middleware that attaches a `usub::uidentity::RequestContext` to unet requests.
 - Redis-backed and in-memory state storage.
 - A runtime server with login, callback, logout, `/me`, liveness, readiness, and startup endpoints.
 

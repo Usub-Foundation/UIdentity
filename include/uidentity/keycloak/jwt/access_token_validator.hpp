@@ -18,7 +18,7 @@
 #include "uidentity/keycloak/detail/jwt_utils.hpp"
 #include "uidentity/keycloak/detail/oidc_utils.hpp"
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     struct JwtValidationResult
     {
@@ -253,4 +253,4 @@ namespace keycloak
         mutable std::mutex cache_mutex_;
         mutable JwksCache cache_;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

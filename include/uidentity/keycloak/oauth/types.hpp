@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace keycloak
+namespace usub::uidentity::keycloak
 {
     struct TokenSet
     {
@@ -32,4 +32,4 @@ namespace keycloak
         TokenSet tokens;
         UserInfo user_info;
     };
-} // namespace keycloak
+} // namespace usub::uidentity::keycloak

@@ -10,7 +10,7 @@
 
 #include "uidentity/utils/url_encode.hpp"
 
-namespace keycloak::detail
+namespace usub::uidentity::keycloak::detail
 {
     inline std::string trim_trailing_slash(std::string value)
     {
@@ -24,7 +24,7 @@ namespace keycloak::detail
     inline std::string realm_root(const std::string &base_url,
                                   const std::string &realm)
     {
-        return trim_trailing_slash(base_url) + "/realms/" + url_encode(realm);
+        return trim_trailing_slash(base_url) + "/realms/" + utils::url_encode(realm);
     }
 
     inline std::string authorization_endpoint(const std::string &base_url,
@@ -181,9 +181,9 @@ namespace keycloak::detail
             }
             first = false;
 
-            body += url_encode(key);
+            body += utils::url_encode(key);
             body.push_back('=');
-            body += url_encode(value);
+            body += utils::url_encode(value);
         }
 
         return body;
@@ -239,4 +239,4 @@ namespace keycloak::detail
 
         return request;
     }
-} // namespace keycloak::detail
+} // namespace usub::uidentity::keycloak::detail

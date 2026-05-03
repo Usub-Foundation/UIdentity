@@ -4,6 +4,9 @@
 #include <iomanip>
 #include <sstream>
 
+namespace usub::uidentity::utils
+{
+
 namespace
 {
     constexpr bool should_encode(unsigned char c)
@@ -16,6 +19,7 @@ namespace
             c == '.' || c == '~');
     }
 }
+
 
 inline std::string url_encode(const std::string_view value)
 {
@@ -61,3 +65,5 @@ inline std::string url_decode(const std::string_view value)
 
     return result;
 }
+
+} // namespace usub::uidentity::utils

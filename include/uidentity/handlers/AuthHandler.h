@@ -13,7 +13,8 @@
 #include "uidentity/utils/cookies.hpp"
 #include "uidentity/utils/url_encode.hpp"
 
-namespace handlers {
+namespace usub::uidentity::handlers
+{
 
 struct AuthHandlerConfig {
     utils::TokenCookieConfig token_cookies;
@@ -166,7 +167,7 @@ private:
         for (const char ch: value) {
             normalized.push_back(ch == '+' ? ' ' : ch);
         }
-        return url_decode(normalized);
+        return utils::url_decode(normalized);
     }
 
     static std::unordered_map<std::string, std::string> parse_form_encoded(std::string_view raw) {
@@ -236,4 +237,4 @@ private:
     AuthHandlerConfig config_;
 };
 
-} // namespace handlers
+} // namespace usub::uidentity::handlers

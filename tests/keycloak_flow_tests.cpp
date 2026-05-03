@@ -37,6 +37,8 @@
 
 namespace
 {
+    using namespace usub::uidentity;
+
     struct FakeHttpClient
     {
         std::function<usub::unet::http::Response(const usub::unet::http::Request &)> handler;
@@ -67,22 +69,22 @@ namespace
 
     struct FakeHandlerClient
     {
-        keycloak::CallbackResult callback_result{};
+        usub::uidentity::keycloak::CallbackResult callback_result{};
 
         bool has_realm(std::string_view realm) const
         {
             return realm == "trader";
         }
 
-        usub::uvent::task::Awaitable<keycloak::AuthStart> start_login(std::string_view realm, std::chrono::seconds)
+        usub::uvent::task::Awaitable<usub::uidentity::keycloak::AuthStart> start_login(std::string_view realm, std::chrono::seconds)
         {
-            co_return keycloak::AuthStart{
+            co_return usub::uidentity::keycloak::AuthStart{
                 .authorization_url = "https://issuer.example/auth?realm=" + std::string(realm) + "&state=state-1",
                 .state = "state-1",
             };
         }
 
-        usub::uvent::task::Awaitable<keycloak::CallbackResult> complete_login(const keycloak::CallbackInput &)
+        usub::uvent::task::Awaitable<usub::uidentity::keycloak::CallbackResult> complete_login(const usub::uidentity::keycloak::CallbackInput &)
         {
             co_return callback_result;
         }
@@ -98,13 +100,13 @@ namespace
             return realm == "trader";
         }
 
-        usub::uvent::task::Awaitable<keycloak::OAuthResult> revoke_token(std::string_view realm,
+        usub::uvent::task::Awaitable<usub::uidentity::keycloak::OAuthResult> revoke_token(std::string_view realm,
                                                                          std::string_view token,
                                                                          std::string_view = "refresh_token")
         {
             revoked_realms.emplace_back(realm);
             revoked_tokens.emplace_back(token);
-            co_return keycloak::OAuthResult{
+            co_return usub::uidentity::keycloak::OAuthResult{
                 .ok = true,
                 .http_status = 204,
                 .error = "",
@@ -323,7 +325,7 @@ namespace
             return response;
         };
 
-        keycloak::OidcDiscoveryClient<FakeHttpClient> discovery(http);
+        usub::uidentity::keycloak::OidcDiscoveryClient<FakeHttpClient> discovery(http);
         const auto result = co_await discovery.discover("https://issuer.example", "demo");
         require(result.ok, "discovery should succeed");
         require(result.endpoints.jwks_uri == "https://issuer.example/jwks", "jwks endpoint mismatch");
@@ -332,20 +334,20 @@ namespace
 
     usub::uvent::task::Awaitable<void> test_pkce_and_callback_flow()
     {
-        keycloak::KeycloakRealmConfig cfg;
+        usub::uidentity::keycloak::KeycloakRealmConfig cfg;
         cfg.base_url = "https://issuer.example";
         cfg.realm = "demo";
         cfg.client_id = "client-app";
         cfg.redirect_uri = "https://service.example/callback";
         cfg.scopes = {"openid", "profile"};
 
-        keycloak::MemoryStateStore store;
+        usub::uidentity::keycloak::MemoryStateStore store;
         FakeAuthMiddleware auth_middleware;
 
         FakeHttpClient http;
         http.handler = [&](const usub::unet::http::Request &request)
         {
-            require(keycloak::detail::request_url(request) == keycloak::detail::token_endpoint(cfg.base_url, cfg.realm), "callback should post to token endpoint");
+            require(usub::uidentity::keycloak::detail::request_url(request) == usub::uidentity::keycloak::detail::token_endpoint(cfg.base_url, cfg.realm), "callback should post to token endpoint");
             require(request.body.find("grant_type=authorization_code") != std::string::npos, "callback grant type missing");
             usub::unet::http::Response response;
             response.setStatus(200);
@@ -353,7 +355,7 @@ namespace
             return response;
         };
 
-        keycloak::TokenServiceConfig token_cfg{
+        usub::uidentity::keycloak::TokenServiceConfig token_cfg{
             .base_url = cfg.base_url,
             .realm = cfg.realm,
             .client_id = cfg.client_id,
@@ -361,9 +363,9 @@ namespace
             .redirect_uri = cfg.redirect_uri,
         };
 
-        keycloak::TokenService<FakeHttpClient> token_service(token_cfg, http);
-        keycloak::KeycloakClient<keycloak::MemoryStateStore,
-                                 keycloak::TokenService<FakeHttpClient>,
+        usub::uidentity::keycloak::TokenService<FakeHttpClient> token_service(token_cfg, http);
+        usub::uidentity::keycloak::KeycloakClient<usub::uidentity::keycloak::MemoryStateStore,
+                                 usub::uidentity::keycloak::TokenService<FakeHttpClient>,
                                  FakeAuthMiddleware>
             client(cfg, store, token_service, auth_middleware);
 
@@ -371,7 +373,7 @@ namespace
         require(!auth_start.state.empty(), "state should be generated");
         require(auth_start.authorization_url.find("code_challenge=") != std::string::npos, "authorization URL should include PKCE challenge");
 
-        const keycloak::CallbackInput callback_input{
+        const usub::uidentity::keycloak::CallbackInput callback_input{
             .code = "auth-code",
             .state = auth_start.state,
         };
@@ -387,7 +389,7 @@ namespace
     usub::uvent::task::Awaitable<void> test_token_service_endpoints()
     {
         FakeHttpClient http;
-        keycloak::TokenServiceConfig token_cfg{
+        usub::uidentity::keycloak::TokenServiceConfig token_cfg{
             .base_url = "https://issuer.example",
             .realm = "demo",
             .client_id = "client-app",
@@ -397,7 +399,7 @@ namespace
 
         http.handler = [&](const usub::unet::http::Request &request)
         {
-            if (keycloak::detail::request_url(request) == keycloak::detail::token_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (usub::uidentity::keycloak::detail::request_url(request) == usub::uidentity::keycloak::detail::token_endpoint(token_cfg.base_url, token_cfg.realm))
             {
                 if (request.body.find("grant_type=refresh_token") != std::string::npos)
                 {
@@ -413,14 +415,14 @@ namespace
                 return response;
             }
 
-            if (keycloak::detail::request_url(request) == keycloak::detail::revocation_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (usub::uidentity::keycloak::detail::request_url(request) == usub::uidentity::keycloak::detail::revocation_endpoint(token_cfg.base_url, token_cfg.realm))
             {
                 usub::unet::http::Response response;
                 response.setStatus(204);
                 return response;
             }
 
-            if (keycloak::detail::request_url(request) == keycloak::detail::introspection_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (usub::uidentity::keycloak::detail::request_url(request) == usub::uidentity::keycloak::detail::introspection_endpoint(token_cfg.base_url, token_cfg.realm))
             {
                 usub::unet::http::Response response;
                 response.setStatus(200);
@@ -428,7 +430,7 @@ namespace
                 return response;
             }
 
-            if (keycloak::detail::request_url(request) == keycloak::detail::userinfo_endpoint(token_cfg.base_url, token_cfg.realm))
+            if (usub::uidentity::keycloak::detail::request_url(request) == usub::uidentity::keycloak::detail::userinfo_endpoint(token_cfg.base_url, token_cfg.realm))
             {
                 usub::unet::http::Response response;
                 response.setStatus(200);
@@ -439,7 +441,7 @@ namespace
             throw std::runtime_error("unexpected request in test_token_service_endpoints");
         };
 
-        keycloak::TokenService<FakeHttpClient> token_service(token_cfg, http);
+        usub::uidentity::keycloak::TokenService<FakeHttpClient> token_service(token_cfg, http);
 
         const auto exchange = co_await token_service.exchange_authorization_code("code-1", "verifier-1");
         require(exchange.ok, "authorization code exchange should succeed");
@@ -473,7 +475,7 @@ namespace
         FakeHttpClient http;
         http.handler = [&](const usub::unet::http::Request &request)
         {
-            require(keycloak::detail::request_url(request) == issuer + "/protocol/openid-connect/certs", "validator should request configured jwks url");
+            require(usub::uidentity::keycloak::detail::request_url(request) == issuer + "/protocol/openid-connect/certs", "validator should request configured jwks url");
             usub::unet::http::Response response;
             response.setStatus(200);
             response.body = key_material.jwks_json;
@@ -489,7 +491,7 @@ namespace
             .clock_skew_seconds = 30,
         };
 
-        keycloak::AccessTokenValidator<FakeHttpClient> validator(auth_cfg, http);
+        usub::uidentity::keycloak::AccessTokenValidator<FakeHttpClient> validator(auth_cfg, http);
         const auto validation = co_await validator.validate(jwt);
         require(validation.ok, "validator should accept signed jwt");
         require(validation.context.roles.size() == 2, "validator should merge realm and client roles");
@@ -527,7 +529,7 @@ namespace
         require(!missing_exp.ok, "validator should reject jwt without exp");
         require(missing_exp.error == "jwt_missing_exp", "missing exp error mismatch");
 
-        keycloak::BearerAuthMiddleware<keycloak::AccessTokenValidator<FakeHttpClient>> middleware(validator);
+        usub::uidentity::keycloak::BearerAuthMiddleware<usub::uidentity::keycloak::AccessTokenValidator<FakeHttpClient>> middleware(validator);
         usub::unet::http::Request request{
             .metadata = {
                 .method_token = "GET",
@@ -566,7 +568,7 @@ namespace
         const auto connect_result = co_await redis.connect();
         require(static_cast<bool>(connect_result), "redis connect should succeed");
 
-        keycloak::RedisStateStore store(redis, "kc:test:state:");
+        usub::uidentity::keycloak::RedisStateStore store(redis, "kc:test:state:");
         const auto state = co_await store.create_state("verifier-123", std::chrono::seconds(30));
         require(!state.empty(), "redis state should be created");
 
@@ -581,7 +583,7 @@ namespace
 
     usub::uvent::task::Awaitable<void> test_cookie_helpers_and_auth_handler_flow()
     {
-        const auto parsed = utils::parse_cookie_header("access_token=abc.def; refresh_token=refresh%201");
+        const auto parsed = usub::uidentity::utils::parse_cookie_header("access_token=abc.def; refresh_token=refresh%201");
         require(parsed.at("access_token") == "abc.def", "access token cookie should parse");
         require(parsed.at("refresh_token") == "refresh 1", "refresh token cookie should decode");
 
@@ -603,12 +605,12 @@ namespace
             },
         };
         FakeHandlerTokenService token_service;
-        handlers::AuthHandlerConfig config;
+        usub::uidentity::handlers::AuthHandlerConfig config;
         config.token_cookies.secure = false;
         config.post_login_redirect = "/app";
         config.post_logout_redirect = "/signed-out";
 
-        handlers::AuthHandler handler(client, token_service, config);
+        usub::uidentity::handlers::AuthHandler handler(client, token_service, config);
 
         usub::unet::http::Request login_request{
             .metadata = {
