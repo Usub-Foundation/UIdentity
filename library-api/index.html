@@ -975,7 +975,7 @@
 </code></pre></div>
 <p>This keeps transport concerns outside the auth logic. The runtime provides <code>UnetHttpClient</code> in <code>src/main.cpp</code>.</p>
 <h2 id="key-configuration-types">Key Configuration Types<a class="headerlink" href="#key-configuration-types" title="Permanent link">&para;</a></h2>
-<p><code>keycloak::KeycloakRealmConfig</code>:</p>
+<p><code>usub::uidentity::keycloak::KeycloakRealmConfig</code>:</p>
 <ul>
 <li><code>base_url</code></li>
 <li><code>realm</code></li>
@@ -985,7 +985,7 @@
 <li><code>pkce_verifier_len</code></li>
 <li><code>omit_default_port</code></li>
 </ul>
-<p><code>keycloak::TokenServiceConfig</code>:</p>
+<p><code>usub::uidentity::keycloak::TokenServiceConfig</code>:</p>
 <ul>
 <li><code>base_url</code></li>
 <li><code>realm</code></li>
@@ -993,7 +993,7 @@
 <li><code>client_secret</code></li>
 <li><code>redirect_uri</code></li>
 </ul>
-<p><code>AuthConfig</code>:</p>
+<p><code>usub::uidentity::AuthConfig</code>:</p>
 <ul>
 <li><code>expected_issuer</code></li>
 <li><code>jwks_url</code></li>
@@ -1004,7 +1004,7 @@
 <li><code>clock_skew_seconds</code></li>
 </ul>
 <h2 id="tokenservice">TokenService<a class="headerlink" href="#tokenservice" title="Permanent link">&para;</a></h2>
-<p><code>keycloak::TokenService&lt;HttpClient&gt;</code> supports:</p>
+<p><code>usub::uidentity::keycloak::TokenService&lt;HttpClient&gt;</code> supports:</p>
 <ul>
 <li><code>exchange_authorization_code(code, code_verifier)</code></li>
 <li><code>refresh_tokens(refresh_token)</code></li>
@@ -1012,9 +1012,9 @@
 <li><code>introspect_token(token)</code></li>
 <li><code>fetch_user_info(access_token)</code></li>
 </ul>
-<p>Methods return <code>keycloak::OAuthResult</code>, which contains <code>ok</code>, <code>http_status</code>, <code>error</code>, <code>TokenSet</code>, and <code>UserInfo</code>.</p>
+<p>Methods return <code>usub::uidentity::keycloak::OAuthResult</code>, which contains <code>ok</code>, <code>http_status</code>, <code>error</code>, <code>TokenSet</code>, and <code>UserInfo</code>.</p>
 <h2 id="accesstokenvalidator">AccessTokenValidator<a class="headerlink" href="#accesstokenvalidator" title="Permanent link">&para;</a></h2>
-<p><code>keycloak::AccessTokenValidator&lt;HttpClient&gt;</code> validates JWT access tokens against JWKS. Successful validation returns a <code>JwtValidationResult</code> with a populated <code>RequestContext</code>.</p>
+<p><code>usub::uidentity::keycloak::AccessTokenValidator&lt;HttpClient&gt;</code> validates JWT access tokens against JWKS. Successful validation returns a <code>JwtValidationResult</code> with a populated <code>usub::uidentity::RequestContext</code>.</p>
 <p>Validation includes:</p>
 <ul>
 <li>JWT structure and supported algorithm checks.</li>
@@ -1029,7 +1029,7 @@
 <p><code>MemoryStateStore</code> is useful for tests and single-process development. <code>RedisStateStore</code> is intended for runtime deployments where callbacks may reach different service instances.</p>
 <p>The multi-realm flow stores both the PKCE verifier and realm name in a <code>StateEntry</code>.</p>
 <h2 id="request-context">Request Context<a class="headerlink" href="#request-context" title="Permanent link">&para;</a></h2>
-<p>Authenticated identity data is carried in <code>RequestContext</code>:</p>
+<p>Authenticated identity data is carried in <code>usub::uidentity::RequestContext</code>:</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">RequestContext</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">authenticated</span><span class="p">;</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">sub</span><span class="p">;</span>
@@ -1041,7 +1041,7 @@
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">scopes</span><span class="p">;</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">};</span>
 </code></pre></div>
-<p>Use <code>get_request_context(request)</code> after middleware or validation code calls <code>set_request_context(request, context)</code>.</p>
+<p>Use <code>usub::uidentity::get_request_context(request)</code> after middleware or validation code calls <code>usub::uidentity::set_request_context(request, context)</code>.</p>
 
 
 

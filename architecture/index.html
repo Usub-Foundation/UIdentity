@@ -948,7 +948,7 @@
 <tr>
 <td><code>BearerAuthMiddleware</code></td>
 <td><code>include/uidentity/keycloak/auth/bearer_auth_middleware.hpp</code></td>
-<td>Authenticates <code>Authorization: Bearer</code> requests and stores a <code>RequestContext</code>.</td>
+<td>Authenticates <code>Authorization: Bearer</code> requests and stores a <code>usub::uidentity::RequestContext</code>.</td>
 </tr>
 <tr>
 <td><code>AuthHandler</code></td>
@@ -983,13 +983,13 @@
 </ol>
 <h2 id="request-authentication-flow">Request Authentication Flow<a class="headerlink" href="#request-authentication-flow" title="Permanent link">&para;</a></h2>
 <p><code>/api/v1/me</code> uses cookies rather than an <code>Authorization</code> header. It validates the access token for the requested realm. If validation fails because the token is expired and a refresh token exists, the runtime refreshes tokens, updates cookies, and validates the new access token.</p>
-<p>For APIs that use bearer headers, <code>BearerAuthMiddleware</code> validates the token and writes <code>RequestContext</code> into <code>request.user_data</code>.</p>
+<p>For APIs that use bearer headers, <code>BearerAuthMiddleware</code> validates the token and writes <code>usub::uidentity::RequestContext</code> into <code>request.user_data</code>.</p>
 <h2 id="multi-realm-behavior">Multi-Realm Behavior<a class="headerlink" href="#multi-realm-behavior" title="Permanent link">&para;</a></h2>
 <p>The runtime accepts <code>UIDENTITY_KEYCLOAK_REALMS</code> as a comma- or whitespace-separated list. Each realm gets its own:</p>
 <ul>
 <li><code>KeycloakRealmConfig</code></li>
 <li><code>TokenServiceConfig</code></li>
-<li><code>AuthConfig</code></li>
+<li><code>usub::uidentity::AuthConfig</code></li>
 <li><code>TokenService</code></li>
 <li><code>AccessTokenValidator</code></li>
 <li><code>PkceAuthStrategy</code></li>
