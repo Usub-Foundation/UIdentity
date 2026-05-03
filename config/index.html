@@ -1073,13 +1073,13 @@
 </tr>
 <tr>
 <td><code>UIDENTITY_AUTH_REQUIRE_AUDIENCE</code></td>
-<td><code>false</code></td>
-<td>Whether to enforce <code>aud</code>.</td>
+<td><code>true</code></td>
+<td>Whether to enforce <code>aud</code>. Keep enabled for production APIs.</td>
 </tr>
 <tr>
 <td><code>UIDENTITY_AUTH_EXPECTED_AUDIENCE</code></td>
-<td>empty</td>
-<td>Expected audience when audience checks are enabled. Realm suffix supported.</td>
+<td>required when audience checks are enabled</td>
+<td>Expected audience. Realm suffix supported.</td>
 </tr>
 <tr>
 <td><code>UIDENTITY_AUTH_EXPECTED_AZP</code></td>
@@ -1093,6 +1093,7 @@
 </tr>
 </tbody>
 </table>
+<p><code>UIDENTITY_AUTH_EXPECTED_ISSUER</code> and <code>UIDENTITY_AUTH_JWKS_URL</code> are required by the validator. When <code>UIDENTITY_AUTH_REQUIRE_AUDIENCE=true</code>, <code>UIDENTITY_AUTH_EXPECTED_AUDIENCE</code> is also required. Missing values fail closed with a configuration error instead of silently weakening JWT validation.</p>
 <h2 id="cookies-and-redirects">Cookies And Redirects<a class="headerlink" href="#cookies-and-redirects" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

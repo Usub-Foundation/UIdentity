@@ -1003,6 +1003,7 @@
 <li><code>expected_azp</code></li>
 <li><code>clock_skew_seconds</code></li>
 </ul>
+<p><code>expected_issuer</code> and <code>jwks_url</code> are required. <code>require_audience</code> defaults to <code>true</code>; when it is enabled, <code>expected_audience</code> is also required. Missing required values fail closed with a configuration error.</p>
 <h2 id="tokenservice">TokenService<a class="headerlink" href="#tokenservice" title="Permanent link">&para;</a></h2>
 <p><code>usub::uidentity::keycloak::TokenService&lt;HttpClient&gt;</code> supports:</p>
 <ul>

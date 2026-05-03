@@ -924,15 +924,19 @@
 <p>Access and refresh tokens are stored in <code>HttpOnly</code> cookies. The runtime appends the realm name to the configured cookie names, such as <code>access_token_trader</code>.</p>
 <p><code>UIDENTITY_COOKIE_SECURE</code> defaults to <code>true</code>. Keep it enabled in HTTPS environments. Disable it only for local HTTP development.</p>
 <h2 id="jwt-validation">JWT Validation<a class="headerlink" href="#jwt-validation" title="Permanent link">&para;</a></h2>
-<p>The validator checks signatures using JWKS, caches keys for <code>UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS</code>, and validates time-based claims with <code>UIDENTITY_AUTH_CLOCK_SKEW_SECONDS</code>.</p>
-<p>For stronger client targeting, enable audience validation:</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">UIDENTITY_AUTH_REQUIRE_AUDIENCE</span><span class="o">=</span><span class="nb">true</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">UIDENTITY_AUTH_EXPECTED_AUDIENCE</span><span class="o">=</span>&lt;expected-audience&gt;
+<p>The validator checks signatures using JWKS, caches keys for <code>UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS</code>, validates the configured issuer, and validates time-based claims with <code>UIDENTITY_AUTH_CLOCK_SKEW_SECONDS</code>.</p>
+<p>Issuer and JWKS configuration are required:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">UIDENTITY_AUTH_EXPECTED_ISSUER</span><span class="o">=</span>https://login.example.com/realms/trader
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">UIDENTITY_AUTH_JWKS_URL</span><span class="o">=</span>https://login.example.com/realms/trader/protocol/openid-connect/certs
 </code></pre></div>
-<p>The <code>azp</code> claim is checked when <code>UIDENTITY_AUTH_EXPECTED_AZP</code> is set. By default, the runtime uses the configured Keycloak client id.</p>
+<p>Audience validation is enabled by default. Keep it enabled for production APIs and set the expected API audience:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">UIDENTITY_AUTH_REQUIRE_AUDIENCE</span><span class="o">=</span><span class="nb">true</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">UIDENTITY_AUTH_EXPECTED_AUDIENCE</span><span class="o">=</span>&lt;expected-audience&gt;
+</code></pre></div>
+<p>If issuer, JWKS URL, or required audience values are missing, validation fails closed with a configuration error. The <code>azp</code> claim is checked when <code>UIDENTITY_AUTH_EXPECTED_AZP</code> is set. By default, the runtime uses the configured Keycloak client id.</p>
 <h2 id="logout">Logout<a class="headerlink" href="#logout" title="Permanent link">&para;</a></h2>
 <p>Logout expires both token cookies. By default, it also attempts to revoke the refresh token:</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">UIDENTITY_REVOKE_REFRESH_TOKEN_ON_LOGOUT</span><span class="o">=</span><span class="nb">true</span>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">UIDENTITY_REVOKE_REFRESH_TOKEN_ON_LOGOUT</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div>
 <p>Revocation failures are intentionally not surfaced to the browser logout flow in the current handler.</p>
 
