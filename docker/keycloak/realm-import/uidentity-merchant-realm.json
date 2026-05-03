@@ -36,14 +36,7 @@
       "emailVerified": true,
       "firstName": "Mona",
       "lastName": "Merchant",
-      "email": "mona@example.com",
-      "credentials": [
-        {
-          "type": "password",
-          "value": "mona123",
-          "temporary": false
-        }
-      ]
+      "email": "mona@example.com"
     }
   ]
 }

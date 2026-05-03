@@ -35,10 +35,12 @@
 | `UIDENTITY_AUTH_EXPECTED_ISSUER` | `<public-base>/realms/<realm>` | Expected `iss` claim. Realm suffix supported. |
 | `UIDENTITY_AUTH_JWKS_URL` | `<internal-base>/realms/<realm>/protocol/openid-connect/certs` | JWKS endpoint. Realm suffix supported. |
 | `UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS` | `300` | JWKS cache lifetime. |
-| `UIDENTITY_AUTH_REQUIRE_AUDIENCE` | `false` | Whether to enforce `aud`. |
-| `UIDENTITY_AUTH_EXPECTED_AUDIENCE` | empty | Expected audience when audience checks are enabled. Realm suffix supported. |
+| `UIDENTITY_AUTH_REQUIRE_AUDIENCE` | `true` | Whether to enforce `aud`. Keep enabled for production APIs. |
+| `UIDENTITY_AUTH_EXPECTED_AUDIENCE` | required when audience checks are enabled | Expected audience. Realm suffix supported. |
 | `UIDENTITY_AUTH_EXPECTED_AZP` | client id | Expected authorized party/client claim. Realm suffix supported. |
 | `UIDENTITY_AUTH_CLOCK_SKEW_SECONDS` | `60` | Allowed clock skew for time-based claims. |
+
+`UIDENTITY_AUTH_EXPECTED_ISSUER` and `UIDENTITY_AUTH_JWKS_URL` are required by the validator. When `UIDENTITY_AUTH_REQUIRE_AUDIENCE=true`, `UIDENTITY_AUTH_EXPECTED_AUDIENCE` is also required. Missing values fail closed with a configuration error instead of silently weakening JWT validation.
 
 ## Cookies And Redirects
 
@@ -66,4 +68,3 @@
 | `UIDENTITY_REDIS_MAX_REDIRECTIONS` | `5` | Maximum cluster redirections. |
 | `UIDENTITY_REDIS_MAX_CONNECTIONS_PER_NODE` | `4` | Per-node connection cap. |
 | `UIDENTITY_REDIS_FORCE_STANDALONE` | `true` | Force standalone Redis behavior. |
-

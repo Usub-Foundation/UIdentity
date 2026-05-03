@@ -28,7 +28,7 @@ struct AuthConfig
     std::string expected_issuer;
     std::string jwks_url;
     std::chrono::seconds jwks_cache_ttl{std::chrono::seconds{300}};
-    bool require_audience = false;
+    bool require_audience = true;
     std::string expected_audience;
     std::string expected_azp;
     int clock_skew_seconds = 60;

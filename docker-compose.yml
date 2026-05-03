@@ -8,7 +8,7 @@ services:
     command: [ "start-dev", "--import-realm" ]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: adminadmin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD before starting Keycloak}
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME: http://localhost:8080
       KC_HOSTNAME_STRICT: "false"

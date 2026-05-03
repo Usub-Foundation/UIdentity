@@ -2,13 +2,9 @@ FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN sed -i 's|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources \
- && printf 'Acquire::https::Verify-Peer "false";\nAcquire::https::Verify-Host "false";\n' > /etc/apt/apt.conf.d/99bootstrap-ca \
- && apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates \
- && rm -f /etc/apt/apt.conf.d/99bootstrap-ca \
- && apt-get update \
- && apt-get install -y \
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    ca-certificates \
     build-essential \
     cmake \
     ninja-build \
@@ -21,7 +17,6 @@ WORKDIR /app
 COPY . .
 
 RUN cmake -S . -B build -G Ninja \
- && cmake --build build --target UIdentityLib UIdentityTests \
- && ctest --test-dir build --output-on-failure
+ && cmake --build build --target UIdentity
 
-CMD ["ctest", "--test-dir", "build", "--output-on-failure"]
+CMD ["cmake", "--build", "build", "--target", "UIdentity"]

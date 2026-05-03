@@ -502,6 +502,27 @@ namespace
         require(validation_again.ok, "validator should accept signed jwt on second validation");
         require(http.requests.size() == 1, "validator should reuse cached jwks");
 
+        AuthConfig missing_issuer_cfg = auth_cfg;
+        missing_issuer_cfg.expected_issuer.clear();
+        usub::uidentity::keycloak::AccessTokenValidator<FakeHttpClient> missing_issuer_validator(missing_issuer_cfg, http);
+        const auto missing_config_issuer = co_await missing_issuer_validator.validate(jwt);
+        require(!missing_config_issuer.ok, "validator should fail closed without expected issuer");
+        require(missing_config_issuer.error == "auth_config_missing_expected_issuer", "missing expected issuer config error mismatch");
+
+        AuthConfig missing_jwks_cfg = auth_cfg;
+        missing_jwks_cfg.jwks_url.clear();
+        usub::uidentity::keycloak::AccessTokenValidator<FakeHttpClient> missing_jwks_validator(missing_jwks_cfg, http);
+        const auto missing_config_jwks = co_await missing_jwks_validator.validate(jwt);
+        require(!missing_config_jwks.ok, "validator should fail closed without jwks url");
+        require(missing_config_jwks.error == "auth_config_missing_jwks_url", "missing jwks url config error mismatch");
+
+        AuthConfig missing_audience_cfg = auth_cfg;
+        missing_audience_cfg.expected_audience.clear();
+        usub::uidentity::keycloak::AccessTokenValidator<FakeHttpClient> missing_audience_validator(missing_audience_cfg, http);
+        const auto missing_config_audience = co_await missing_audience_validator.validate(jwt);
+        require(!missing_config_audience.ok, "validator should fail closed without expected audience");
+        require(missing_config_audience.error == "auth_config_missing_expected_audience", "missing expected audience config error mismatch");
+
         const auto now = std::chrono::duration_cast<std::chrono::seconds>(
                              std::chrono::system_clock::now().time_since_epoch())
                              .count();

@@ -45,11 +45,13 @@ docker compose up redis keycloak
 
 Keycloak is exposed on `http://localhost:8080` and imports realms from `docker/keycloak/realm-import`.
 
-Bundled demo credentials:
+Set a local Keycloak admin password before starting Keycloak:
 
-- Keycloak admin: `admin` / `adminadmin`
-- `trader` realm user: `alice` / `alice123`
-- `merchant` realm user: `mona` / `mona123`
+```bash
+KEYCLOAK_ADMIN_PASSWORD=<local-password> docker compose up redis keycloak
+```
+
+The imported demo users do not include passwords. Create local test credentials in the Keycloak admin UI when needed.
 
 ## Run The Runtime Service
 
@@ -59,9 +61,14 @@ After building, run the compiled service from your build directory. Configure it
 UIDENTITY_KEYCLOAK_AUTH_BASE_URL=http://localhost:8080 \
 UIDENTITY_KEYCLOAK_INTERNAL_BASE_URL=http://localhost:8080 \
 UIDENTITY_KEYCLOAK_REALMS=trader,merchant \
+UIDENTITY_AUTH_EXPECTED_ISSUER_TRADER=http://localhost:8080/realms/trader \
+UIDENTITY_AUTH_EXPECTED_ISSUER_MERCHANT=http://localhost:8080/realms/merchant \
+UIDENTITY_AUTH_JWKS_URL_TRADER=http://localhost:8080/realms/trader/protocol/openid-connect/certs \
+UIDENTITY_AUTH_JWKS_URL_MERCHANT=http://localhost:8080/realms/merchant/protocol/openid-connect/certs \
+UIDENTITY_AUTH_EXPECTED_AUDIENCE_TRADER=myclient \
+UIDENTITY_AUTH_EXPECTED_AUDIENCE_MERCHANT=myclient \
 UIDENTITY_COOKIE_SECURE=false \
 ./build/UIdentity
 ```
 
 The service defaults to `127.0.0.1:22813`.
-

@@ -47,6 +47,8 @@ This keeps transport concerns outside the auth logic. The runtime provides `Unet
 - `expected_azp`
 - `clock_skew_seconds`
 
+`expected_issuer` and `jwks_url` are required. `require_audience` defaults to `true`; when it is enabled, `expected_audience` is also required. Missing required values fail closed with a configuration error.
+
 ## TokenService
 
 `usub::uidentity::keycloak::TokenService<HttpClient>` supports:
@@ -98,4 +100,3 @@ struct RequestContext {
 ```
 
 Use `usub::uidentity::get_request_context(request)` after middleware or validation code calls `usub::uidentity::set_request_context(request, context)`.
-

@@ -14,16 +14,23 @@ Access and refresh tokens are stored in `HttpOnly` cookies. The runtime appends 
 
 ## JWT Validation
 
-The validator checks signatures using JWKS, caches keys for `UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS`, and validates time-based claims with `UIDENTITY_AUTH_CLOCK_SKEW_SECONDS`.
+The validator checks signatures using JWKS, caches keys for `UIDENTITY_AUTH_JWKS_CACHE_TTL_SECONDS`, validates the configured issuer, and validates time-based claims with `UIDENTITY_AUTH_CLOCK_SKEW_SECONDS`.
 
-For stronger client targeting, enable audience validation:
+Issuer and JWKS configuration are required:
+
+```bash
+UIDENTITY_AUTH_EXPECTED_ISSUER=https://login.example.com/realms/trader
+UIDENTITY_AUTH_JWKS_URL=https://login.example.com/realms/trader/protocol/openid-connect/certs
+```
+
+Audience validation is enabled by default. Keep it enabled for production APIs and set the expected API audience:
 
 ```bash
 UIDENTITY_AUTH_REQUIRE_AUDIENCE=true
 UIDENTITY_AUTH_EXPECTED_AUDIENCE=<expected-audience>
 ```
 
-The `azp` claim is checked when `UIDENTITY_AUTH_EXPECTED_AZP` is set. By default, the runtime uses the configured Keycloak client id.
+If issuer, JWKS URL, or required audience values are missing, validation fails closed with a configuration error. The `azp` claim is checked when `UIDENTITY_AUTH_EXPECTED_AZP` is set. By default, the runtime uses the configured Keycloak client id.
 
 ## Logout
 
@@ -34,4 +41,3 @@ UIDENTITY_REVOKE_REFRESH_TOKEN_ON_LOGOUT=true
 ```
 
 Revocation failures are intentionally not surfaced to the browser logout flow in the current handler.
-

@@ -59,8 +59,10 @@ The repository includes Docker Compose services for local Keycloak and Redis dev
 docker compose up redis keycloak
 ```
 
-Bundled demo credentials:
+Set a local Keycloak admin password before starting Keycloak:
 
-- Keycloak admin: `admin` / `adminadmin`
-- `trader` realm user: `alice` / `alice123`
-- `merchant` realm user: `mona` / `mona123`
+```bash
+KEYCLOAK_ADMIN_PASSWORD=<local-password> docker compose up redis keycloak
+```
+
+The imported demo users do not include passwords. Create local test credentials in the Keycloak admin UI when needed.

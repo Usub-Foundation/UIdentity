@@ -39,6 +39,19 @@ namespace usub::uidentity::keycloak
 
         usub::uvent::task::Awaitable<JwtValidationResult> validate(std::string_view access_token) const
         {
+            if (cfg_.expected_issuer.empty())
+            {
+                co_return failure(500, "auth_config_missing_expected_issuer");
+            }
+            if (cfg_.jwks_url.empty())
+            {
+                co_return failure(500, "auth_config_missing_jwks_url");
+            }
+            if (cfg_.require_audience && cfg_.expected_audience.empty())
+            {
+                co_return failure(500, "auth_config_missing_expected_audience");
+            }
+
             if (access_token.empty())
             {
                 co_return failure(401, "missing_access_token");
@@ -104,7 +117,7 @@ namespace usub::uidentity::keycloak
             {
                 co_return failure(401, "jwt_missing_issuer");
             }
-            if (!cfg_.expected_issuer.empty() && *issuer != cfg_.expected_issuer)
+            if (*issuer != cfg_.expected_issuer)
             {
                 co_return failure(401, "jwt_issuer_mismatch");
             }
@@ -127,7 +140,7 @@ namespace usub::uidentity::keycloak
                 }
             }
 
-            if (cfg_.require_audience && !cfg_.expected_audience.empty())
+            if (cfg_.require_audience)
             {
                 const auto audiences = detail::extract_audience_values(jwt->payload_json);
                 if (!detail::contains_string(audiences, cfg_.expected_audience))
